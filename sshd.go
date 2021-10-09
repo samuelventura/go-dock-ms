@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/armon/go-socks5"
+	"github.com/felixge/tcpkeepalive"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -238,25 +239,26 @@ func (cc *channelConn) SetWriteDeadline(t time.Time) error {
 }
 
 type Listener struct {
-	net.Listener
+	listener net.Listener
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
-	c, err := l.Listener.Accept()
+	c, err := l.listener.Accept()
 	if err != nil {
 		return nil, err
 	}
-	tcp := c.(*net.TCPConn)
-	tcp.SetKeepAlive(true)
-	tcp.SetKeepAlivePeriod(5 * time.Second)
-	tcp.SetLinger(-1)
+	err = tcpkeepalive.SetKeepAlive(c, 5*time.Second, 3, 1*time.Second)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
 	return c, nil
 }
 
 func (l *Listener) Close() error {
-	return l.Listener.Close()
+	return l.listener.Close()
 }
 
 func (l *Listener) Addr() net.Addr {
-	return l.Listener.Addr()
+	return l.listener.Addr()
 }

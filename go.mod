@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
+	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e
 	github.com/kardianos/service v1.2.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	gorm.io/driver/postgres v1.1.2
