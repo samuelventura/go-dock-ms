@@ -47,7 +47,7 @@ func main() {
 }
 
 func args() Args {
-	keypath, err := withext("key")
+	keypath, err := withext("pub")
 	if err != nil {
 		log.Fatal(err)
 	}

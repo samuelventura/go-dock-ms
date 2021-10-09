@@ -33,10 +33,11 @@ sqlite3 ~/go/bin/go-dock-ms.db3 "select * from key_dros"
 sqlite3 ~/go/bin/go-dock-ms.db3 "select * from ship_dros"
 sqlite3 ~/go/bin/go-dock-ms.db3 "select * from log_dros"
 #no key management wapi to avoid the extra endpoint
-sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`' 'default', readfile('$HOME/.ssh/id_rsa.pub'))"
-sudo sqlite3 /usr/local/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`' 'default', readfile('$HOME/github/go-dock-ms/id_rsa.pub'))"
-#sudo ln -sf ~/github/go-dock-ms/id_rsa /usr/local/bin/go-dock-ms.key
-#ln -sf ~/github/go-dock-ms/id_rsa ~/go/bin/go-dock-sh.key
+#sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`' 'default', readfile('$HOME/github/go-dock-ms/id_rsa.pub'))"
+#sudo sqlite3 /usr/local/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`', 'default', readfile('$HOME/local/go-dock-ms/id_rsa.pub'))"
+#sudo sqlite3 /usr/local/bin/go-dock-ms.db3 "select * from key_dros"
+#sudo ln -sf ~/local/go-dock-ms/id_rsa.key /usr/local/bin/go-dock-ms.key
+#ln -sf ~/local/go-dock-ms/id_rsa.pub ~/go/bin/go-dock-sh.pub
 #sudo tail -f /usr/local/bin/go-dock-ms.out.log 
 #export DOCK_POOL=127.0.0.1:31652
 #for go-sqlite in linux
