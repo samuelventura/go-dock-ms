@@ -8,7 +8,7 @@ SSH dock micro service
 # helpers
 
 ```bash
-#keepalive, mac whitlist
+#FIXME keepalive, mac whitelist, ssh nop log, sock5 nop log
 #DOCK_MAXSHIPS=1000
 #DOCK_LOGS=/var/log
 #DOCK_ENDPOINT=0.0.0.0:31652
