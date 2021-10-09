@@ -149,7 +149,8 @@ func handleConnection(args Args, tcpConn net.Conn) {
 				log.Println(port, "dial", err)
 				return nil, err
 			}
-			return &channelConn{sshChan, reqChan}, nil
+			go ssh.DiscardRequests(reqChan)
+			return &channelConn{sshChan}, nil
 		},
 	}
 	go func() {
@@ -201,7 +202,6 @@ func handleConnection(args Args, tcpConn net.Conn) {
 
 type channelConn struct {
 	sshch ssh.Channel
-	reqch <-chan *ssh.Request
 }
 
 func (cc *channelConn) Read(b []byte) (n int, err error) {
