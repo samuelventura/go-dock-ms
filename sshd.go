@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func sshd(args Args) (func(), error) {
+func sshd(args Args) *Result {
 	dao := args.Get("dao").(Dao)
 	host := args.Get("hostname").(string)
 	endpoint := args.Get("endpoint").(string)
@@ -21,11 +21,11 @@ func sshd(args Args) (func(), error) {
 	maxships := args.Get("maxships").(int64)
 	privateBytes, err := ioutil.ReadFile(hostkey)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
@@ -51,17 +51,22 @@ func sshd(args Args) (func(), error) {
 	config.AddHostKey(private)
 	listen, err := net.Listen("tcp", endpoint)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port", port)
-	exit := make(chan interface{})
+	closer := NewCloser(func() {
+		err := listen.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	})
 	go func() {
 		for {
 			tcpConn, err := listen.Accept()
 			if err != nil {
 				log.Println(err)
-				close(exit)
+				closer.Close()
 				return
 			}
 			count, err := dao.CountShips(host)
@@ -70,31 +75,21 @@ func sshd(args Args) (func(), error) {
 				tcpConn.Close()
 				continue
 			}
-			sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			go func() {
-				for newChannel := range chans {
-					newChannel.Reject(ssh.Prohibited, "unsupported")
-				}
-			}()
-			go ssh.DiscardRequests(reqs)
-			go handleConnection(dao, host, sshConn)
+			go handleConnection(dao, host, tcpConn, config, closer)
 		}
 	}()
-	closer := func() {
-		err := listen.Close()
-		if err != nil {
-			log.Println(err)
-		}
-		<-exit
-	}
-	return closer, nil
+	return closer.Result()
 }
 
-func handleConnection(dao Dao, host string, sshConn *ssh.ServerConn) {
+func handleConnection(dao Dao, host string, tcpConn net.Conn, config *ssh.ServerConfig, parent *Closer) {
+	closed := make(chan interface{})
+	defer close(closed)
+	defer tcpConn.Close()
+	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	defer sshConn.Close()
 	ship := sshConn.User()
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
@@ -104,30 +99,33 @@ func handleConnection(dao Dao, host string, sshConn *ssh.ServerConn) {
 	}
 	defer listen.Close()
 	port := listen.Addr().(*net.TCPAddr).Port
+	log.Println(port, ship)
 	err = dao.AddEvent("open", host, ship, port)
-	defer func() {
-		err = dao.AddEvent("close", host, ship, port)
-		if err != nil {
-			log.Println(err)
-		}
-	}()
 	if err != nil {
 		log.Println(err)
+		parent.Close()
 		return
 	}
 	err = dao.SetShip(host, ship, port)
 	if err != nil {
 		log.Println(err)
+		parent.Close()
 		return
 	}
 	defer func() {
 		err := dao.ClearShip(host, port)
 		if err != nil {
 			log.Println(err)
+			parent.Close()
+		}
+		err = dao.AddEvent("close", host, ship, port)
+		if err != nil {
+			log.Println(err)
+			parent.Close()
 		}
 	}()
 	conf := &socks5.Config{
-		Logger: log.Default(),
+		Logger: log.Default(), //FIXME nop logger
 		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			sshChan, reqChan, err := sshConn.OpenChannel("forward", []byte(addr))
 			if err != nil {
@@ -136,44 +134,50 @@ func handleConnection(dao Dao, host string, sshConn *ssh.ServerConn) {
 			return &channelConn{sshChan, reqChan}, nil
 		},
 	}
-	serverSocks, err := socks5.New(conf)
+	go func() {
+		defer log.Println(port, "channel handler exited")
+		defer listen.Close()
+		for nch := range chans {
+			nch.Reject(ssh.Prohibited, "unsupported")
+		}
+	}()
+	go func() {
+		defer log.Println(port, "request handler exited")
+		defer listen.Close()
+		for req := range reqs {
+			if req.WantReply {
+				req.Reply(false, nil)
+			}
+		}
+	}()
+	go func() {
+		defer log.Println(port, "ping handler exited")
+		for {
+			dl := time.Now().Add(10 * time.Second)
+			resp, _, err := sshConn.SendRequest("ping", true, nil)
+			if time.Now().After(dl) || err != nil || !resp {
+				log.Println("ping timeout")
+				listen.Close()
+				return
+			}
+			timer := time.NewTimer(5 * time.Second)
+			select {
+			case <-timer.C:
+				continue
+			case <-closed:
+				timer.Stop()
+				return
+			}
+		}
+	}()
+	server, err := socks5.New(conf)
 	if err != nil {
-		log.Println(err)
+		log.Println(port, err)
 		return
 	}
-	ping := make(chan interface{})
-	go func() {
-		err = serverSocks.Serve(listen)
-		if err != nil {
-			ping <- false
-			return
-		}
-	}()
-	go func() {
-		for {
-			resp, _, err := sshConn.SendRequest("ping", true, nil)
-			if err != nil {
-				ping <- false
-				return
-			}
-			if resp {
-				ping <- true
-				log.Println("pong")
-				time.Sleep(5 * time.Second)
-			}
-		}
-	}()
-	for {
-		timer := time.NewTimer(10 * time.Second)
-		select {
-		case <-timer.C:
-			return
-		case val := <-ping:
-			timer.Stop()
-			if !val.(bool) {
-				return
-			}
-		}
+	err = server.Serve(listen)
+	if err != nil {
+		log.Println(port, err)
 	}
 }
 

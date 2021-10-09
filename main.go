@@ -16,20 +16,21 @@ func main() {
 
 	log.Println("starting...")
 	defer log.Println("exit")
-	closer, err := run(args())
-	if err != nil {
-		log.Fatal(err)
+	r := run(args())
+	if r.err != nil {
+		log.Fatal(r.err)
 	}
-	defer closer()
+	defer r.close()
 
-	exit := make(chan interface{})
+	stdin := make(chan interface{})
 	go func() {
-		defer close(exit)
+		defer close(stdin)
 		ioutil.ReadAll(os.Stdin)
 	}()
 	select {
+	case <-r.closed:
 	case <-ctrlc:
-	case <-exit:
+	case <-stdin:
 	}
 }
 
@@ -56,25 +57,15 @@ func args() Args {
 	return args
 }
 
-func run(args Args) (func(), error) {
+func run(args Args) *Result {
 	dao, err := NewDao(args)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	err = dao.ClearShips(args.Get("hostname").(string))
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	args.Set("dao", dao)
-	closer, err := sshd(args)
-	if err != nil {
-		return nil, err
-	}
-	return func() {
-		closer()
-		err := dao.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}, nil
+	return sshd(args)
 }

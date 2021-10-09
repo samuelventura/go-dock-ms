@@ -23,21 +23,26 @@ func main() {
 	signal.Notify(ctrlc, os.Interrupt)
 
 	log.Println("starting...")
-	defer log.Println("exit")
-	closer, err := run(args())
-	if err != nil {
-		log.Fatal(err)
+	r := run(args())
+	if r.err != nil {
+		log.Fatal(r.err)
 	}
-	defer closer()
+	defer func() {
+		log.Println("closing...")
+		r.close()
+		<-r.closed
+		log.Println("closed")
+	}()
 
-	exit := make(chan interface{})
+	stdin := make(chan interface{})
 	go func() {
-		defer close(exit)
+		defer close(stdin)
 		ioutil.ReadAll(os.Stdin)
 	}()
 	select {
+	case <-r.closed:
 	case <-ctrlc:
-	case <-exit:
+	case <-stdin:
 	}
 }
 
@@ -58,16 +63,16 @@ func args() Args {
 	return args
 }
 
-func run(args Args) (func(), error) {
+func run(args Args) *Result {
 	record := args.Get("record").(string)
 	keypath := args.Get("keypath").(string)
 	key, err := ioutil.ReadFile(keypath)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		return nil, err
+		return &Result{err: err}
 	}
 	user := "mac" + strings.ReplaceAll(args.Get("nicmac").(string), ":", "")
 	hkcb := func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil }
@@ -79,7 +84,7 @@ func run(args Args) (func(), error) {
 	txts, err := net.LookupTXT(record)
 	if err != nil {
 		log.Println("record", record)
-		return nil, err
+		return &Result{err: err}
 	}
 	for _, txt := range txts {
 		addrs := strings.Split(txt, ",")
@@ -100,16 +105,45 @@ func run(args Args) (func(), error) {
 				conn.Close()
 				continue
 			}
+			var closer = NewCloser(func() {
+				err := sshCon.Close()
+				if err != nil {
+					log.Println(err)
+				}
+				err = conn.Close()
+				if err != nil {
+					log.Println(err)
+				}
+			})
 			go func() {
-				for req := range reqch {
-					if req.Type == "ping" {
-						req.Reply(true, nil)
+				defer log.Println("request handler exited")
+				for {
+					timer := time.NewTimer(10 * time.Second)
+					select {
+					case req := <-reqch:
+						if req != nil && req.Type == "ping" {
+							err := req.Reply(true, nil)
+							switch err {
+							case nil:
+								timer.Stop()
+							default:
+								closer.Close()
+								return
+							}
+						}
+					case <-timer.C:
+						log.Println("idle timeout")
+						closer.Close()
+						return
+					case <-closer.Channel():
+						return
 					}
 				}
 			}()
 			handleForward := func(ch ssh.NewChannel) {
 				addr := string(ch.ExtraData())
-				log.Println("forward", addr)
+				log.Println("open", addr)
+				defer log.Println("close", addr)
 				sshch, _, err := ch.Accept()
 				if err != nil {
 					log.Println(err)
@@ -122,28 +156,33 @@ func run(args Args) (func(), error) {
 					return
 				}
 				defer conn.Close()
-				go func() { io.Copy(sshch, conn) }()
-				io.Copy(conn, sshch)
+				done := make(chan interface{}, 2)
+				go func() {
+					io.Copy(sshch, conn)
+					done <- true
+				}()
+				go func() {
+					io.Copy(conn, sshch)
+					done <- true
+				}()
+				select {
+				case <-done: //close on first error
+				case <-closer.Channel():
+				}
 			}
 			go func() {
+				defer log.Println("channel handler exited")
+				defer closer.Close()
 				for ch := range sshch {
 					if ch.ChannelType() != "forward" {
 						ch.Reject(ssh.Prohibited, "unsupported")
+						return
 					}
 					go handleForward(ch)
 				}
 			}()
-			return func() {
-				err := sshCon.Close()
-				if err != nil {
-					log.Println(err)
-				}
-				err = conn.Close()
-				if err != nil {
-					log.Println(err)
-				}
-			}, nil
+			return closer.Result()
 		}
 	}
-	return nil, fmt.Errorf("connection failed")
+	return &Result{err: fmt.Errorf("connection failed")}
 }
