@@ -47,7 +47,7 @@ func main() {
 }
 
 func args() Args {
-	keypath, err := withext("pub")
+	keypath, err := withext("key")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,8 +57,8 @@ func args() Args {
 	}
 	args := NewArgs()
 	args.Set("keypath", getenv("DOCK_KEYPATH", keypath))
-	args.Set("record", os.Getenv("DOCK_RECORD"))
-	args.Set("pool", os.Getenv("DOCK_POOL"))
+	args.Set("pool", getenv("DOCK_POOL", "127.0.0.1:31652"))
+	args.Set("record", getenv("DOCK_RECORD", ""))
 	args.Set("nicname", iname)
 	args.Set("nicmac", imac)
 	return args
@@ -84,14 +84,13 @@ func run(args Args) *Result {
 		HostKeyCallback: ssh.HostKeyCallback(hkcb),
 	}
 	var txts []string
-	if len(pool) > 0 {
-		txts = strings.Split(pool, ",")
-	} else {
+	if len(record) > 0 {
 		txts, err = net.LookupTXT(record)
 		if err != nil {
-			log.Println("record", record)
 			return &Result{err: err}
 		}
+	} else {
+		txts = strings.Split(pool, ",")
 	}
 	for _, txt := range txts {
 		addrs := strings.Split(txt, ",")
