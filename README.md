@@ -24,7 +24,7 @@ go install && go-dock-ss
 #export DOCK_KEYPATH=~/.ssh/id_rsa
 #export DOCK_RECORD=dock.domain.tld
 (cd go-dock-sh && go install && go-dock-sh)
-curl -vx socks5h://localhost:60101 http://google.com/
+curl -vx socks5h://127.0.0.1:PORT http://google.com/
 sqlite3 ~/go/bin/go-dock-ms.db3 ".tables"
 sqlite3 ~/go/bin/go-dock-ms.db3 ".schema key_dros"
 sqlite3 ~/go/bin/go-dock-ms.db3 ".schema ship_dros"

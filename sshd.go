@@ -61,6 +61,8 @@ func sshd(args Args) *Result {
 			log.Println(err)
 		}
 	})
+	args.Set("parent", closer)
+	args.Set("config", config)
 	go func() {
 		for {
 			tcpConn, err := listen.Accept()
@@ -71,17 +73,21 @@ func sshd(args Args) *Result {
 			}
 			count, err := dao.CountShips(host)
 			if err != nil || count >= maxships {
-				log.Println("maxships", maxships, count, err)
+				log.Println("max ships", maxships, count, err)
 				tcpConn.Close()
 				continue
 			}
-			go handleConnection(dao, host, tcpConn, config, closer)
+			go handleConnection(args, tcpConn)
 		}
 	}()
 	return closer.Result()
 }
 
-func handleConnection(dao Dao, host string, tcpConn net.Conn, config *ssh.ServerConfig, parent *Closer) {
+func handleConnection(args Args, tcpConn net.Conn) {
+	dao := args.Get("dao").(Dao)
+	host := args.Get("hostname").(string)
+	parent := args.Get("parent").(*Closer)
+	config := args.Get("config").(*ssh.ServerConfig)
 	closed := make(chan interface{})
 	defer close(closed)
 	defer tcpConn.Close()
@@ -124,11 +130,22 @@ func handleConnection(dao Dao, host string, tcpConn net.Conn, config *ssh.Server
 			parent.Close()
 		}
 	}()
+	go func() {
+		defer listen.Close()
+		select {
+		case <-closed:
+		case <-parent.Channel():
+		}
+	}()
 	conf := &socks5.Config{
-		Logger: log.Default(), //FIXME nop logger
+		//FIXME nop logger
+		Logger: log.Default(),
+		//FIXME close on context
 		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			log.Println(port, "dialing", network, addr)
 			sshChan, reqChan, err := sshConn.OpenChannel("forward", []byte(addr))
 			if err != nil {
+				log.Println(port, "dial", err)
 				return nil, err
 			}
 			return &channelConn{sshChan, reqChan}, nil
@@ -175,7 +192,7 @@ func handleConnection(dao Dao, host string, tcpConn net.Conn, config *ssh.Server
 		log.Println(port, err)
 		return
 	}
-	err = server.Serve(listen)
+	err = server.Serve(&Listener{listen})
 	if err != nil {
 		log.Println(port, err)
 	}
@@ -195,15 +212,17 @@ func (cc *channelConn) Write(b []byte) (n int, err error) {
 }
 
 func (cc *channelConn) Close() error {
+	//FIXME implement keepalive
+	log.Println("closing connection...")
 	return cc.sshch.Close()
 }
 
 func (cc *channelConn) LocalAddr() net.Addr {
-	return &net.TCPAddr{}
+	return &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0}
 }
 
 func (cc *channelConn) RemoteAddr() net.Addr {
-	return &net.TCPAddr{}
+	return &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0}
 }
 
 func (cc *channelConn) SetDeadline(t time.Time) error {
@@ -216,4 +235,28 @@ func (cc *channelConn) SetReadDeadline(t time.Time) error {
 
 func (cc *channelConn) SetWriteDeadline(t time.Time) error {
 	return nil
+}
+
+type Listener struct {
+	net.Listener
+}
+
+func (l *Listener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	tcp := c.(*net.TCPConn)
+	tcp.SetKeepAlive(true)
+	tcp.SetKeepAlivePeriod(5 * time.Second)
+	tcp.SetLinger(-1)
+	return c, nil
+}
+
+func (l *Listener) Close() error {
+	return l.Listener.Close()
+}
+
+func (l *Listener) Addr() net.Addr {
+	return l.Listener.Addr()
 }
