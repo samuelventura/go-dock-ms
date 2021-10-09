@@ -58,12 +58,14 @@ func args() Args {
 	args := NewArgs()
 	args.Set("keypath", getenv("DOCK_KEYPATH", keypath))
 	args.Set("record", os.Getenv("DOCK_RECORD"))
+	args.Set("pool", os.Getenv("DOCK_POOL"))
 	args.Set("nicname", iname)
 	args.Set("nicmac", imac)
 	return args
 }
 
 func run(args Args) *Result {
+	pool := args.Get("pool").(string)
 	record := args.Get("record").(string)
 	keypath := args.Get("keypath").(string)
 	key, err := ioutil.ReadFile(keypath)
@@ -81,10 +83,15 @@ func run(args Args) *Result {
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
 		HostKeyCallback: ssh.HostKeyCallback(hkcb),
 	}
-	txts, err := net.LookupTXT(record)
-	if err != nil {
-		log.Println("record", record)
-		return &Result{err: err}
+	var txts []string
+	if len(pool) > 0 {
+		txts = strings.Split(pool, ",")
+	} else {
+		txts, err = net.LookupTXT(record)
+		if err != nil {
+			log.Println("record", record)
+			return &Result{err: err}
+		}
 	}
 	for _, txt := range txts {
 		addrs := strings.Split(txt, ",")
@@ -92,7 +99,6 @@ func run(args Args) *Result {
 		n := rand.Intn(l)
 		for i := 0; i < l; i++ {
 			addr := addrs[(n+i)%l]
-			addr = "localhost:31652"
 			log.Println(addr, user)
 			conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 			if err != nil {

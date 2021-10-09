@@ -35,6 +35,10 @@ sqlite3 ~/go/bin/go-dock-ms.db3 "select * from log_dros"
 #no key management wapi to avoid the extra endpoint
 sqlite3 ~/go/bin/go-dock-ms.db3 \
     "insert into key_dros (host, name, key) values ('`hostname`', 'default', readfile('$HOME/.ssh/id_rsa.pub'))"
+#sudo ln -s ~/.ssh/id_rsa /usr/local/bin/go-dock-ms.key
+#ln -s ~/.ssh/id_rsa ~/go/bin/go-dock-sh.key
+#sudo tail -f /usr/local/bin/go-dock-ms.out.log 
+#export DOCK_POOL=127.0.0.1:31652
 #for go-sqlite in linux
 sudo apt install build-essentials
 dig dock.domain.tld TXT
