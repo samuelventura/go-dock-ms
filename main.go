@@ -20,7 +20,7 @@ func main() {
 	log.Println(os.Getpid(), "starting...")
 	defer log.Println("exit")
 	node := root()
-	defer node.Wait()
+	defer node.WaitDisposed()
 	defer node.Close()
 	err := run(node)
 	if err != nil {

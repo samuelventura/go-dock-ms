@@ -79,7 +79,7 @@ func sshd(node tree.Node) error {
 			}
 			addr := tcpConn.RemoteAddr().String()
 			cid := id.Next(addr)
-			child := node.Child(cid)
+			child := node.AddChild(cid)
 			if child == nil {
 				tcpConn.Close()
 				continue
@@ -180,7 +180,7 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn) {
 		}
 		addr := proxyConn.RemoteAddr().String()
 		cid := id.Next(addr)
-		child := node.Child(cid)
+		child := node.AddChild(cid)
 		if child == nil {
 			proxyConn.Close()
 			continue

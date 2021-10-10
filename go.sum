@@ -97,12 +97,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rs/xid v1.2.1/go.mod h1:+uKXf+4Djp6Md1KODXJxgGQPKngRmWyn10oCKFzNHOQ=
 github.com/rs/zerolog v1.13.0/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OKkWU=
 github.com/rs/zerolog v1.15.0/go.mod h1:xYTKnLHcpfU2225ny5qZjxnj9NvkumZYjJHlAThCjNc=
-github.com/samuelventura/go-tree v0.0.0-20211010051915-6f560fd2f6a9 h1:DGUfneazlAloU71ZbnQF9F9z06K96G7CM6bn9IDmN2M=
-github.com/samuelventura/go-tree v0.0.0-20211010051915-6f560fd2f6a9/go.mod h1:1x8iKxQQFIxwPBfkxRGne6V0Phos9OjZJ7624yIJwn0=
-github.com/samuelventura/go-tree v0.0.0-20211010204347-6c971052dee2 h1:BEtUl1VridU2fryLSsv3UuNhRQTSSqEVOji+85siGs4=
-github.com/samuelventura/go-tree v0.0.0-20211010204347-6c971052dee2/go.mod h1:1x8iKxQQFIxwPBfkxRGne6V0Phos9OjZJ7624yIJwn0=
-github.com/samuelventura/go-tree v0.0.0-20211010215031-c1b176baa282 h1:Iz2kNfiPgpyoKdrjEtx8YAmFnawb+6jSXZgKYO1n1tA=
-github.com/samuelventura/go-tree v0.0.0-20211010215031-c1b176baa282/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
+github.com/samuelventura/go-tree v0.0.0-20211010230128-af478bff09be h1:sidm1DCJueClyjtxAan0ZNQs9PtnurNVb9tTjQh1F14=
+github.com/samuelventura/go-tree v0.0.0-20211010230128-af478bff09be/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v1.2.0 h1:abSATXmQEYyShuxI4/vyW3tV1MrKAJzCZ/0zLUXYbsQ=
@@ -163,8 +159,6 @@ golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20211001092434-39dca1131b70 h1:pGleJoyD1yA5HfvuaksHxD0404gsEkNDerKsQ0N0y1s=
-golang.org/x/sys v0.0.0-20211001092434-39dca1131b70/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac h1:oN6lz7iLW/YC7un8pq+9bOLyXrprv2+DKfkJY+2LJJw=
 golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
@@ -200,11 +194,8 @@ gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gorm.io/driver/postgres v1.1.2 h1:Amy3hCvLqM+/ICzjCnQr8wKFLVJTeOTdlMT7kCP+J1Q=
 gorm.io/driver/postgres v1.1.2/go.mod h1:/AGV0zvqF3mt9ZtzLzQmXWQ/5vr+1V1TyHZGZVjzmwI=
-gorm.io/driver/sqlite v1.1.5 h1:JU8G59VyKu1x1RMQgjefQnkZjDe9wHc1kARDZPu5dZs=
-gorm.io/driver/sqlite v1.1.5/go.mod h1:NpaYMcVKEh6vLJ47VP6T7Weieu4H1Drs3dGD/K6GrGc=
 gorm.io/driver/sqlite v1.1.6 h1:p3U8WXkVFTOLPED4JjrZExfndjOtya3db8w9/vEMNyI=
 gorm.io/driver/sqlite v1.1.6/go.mod h1:W8LmC/6UvVbHKah0+QOC7Ja66EaZXHwUTjgXY8YNWX8=
-gorm.io/gorm v1.21.15 h1:gAyaDoPw0lCyrSFWhBlahbUA1U4P5RViC1uIqoB+1Rk=
 gorm.io/gorm v1.21.15/go.mod h1:F+OptMscr0P2F2qU97WT1WimdH9GaQPoDW7AYd5i2Y0=
 gorm.io/gorm v1.21.16 h1:YBIQLtP5PLfZQz59qfrq7xbrK7KWQ+JsXXCH/THlMqs=
 gorm.io/gorm v1.21.16/go.mod h1:F+OptMscr0P2F2qU97WT1WimdH9GaQPoDW7AYd5i2Y0=
