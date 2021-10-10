@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samuelventura/go-tree"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -27,9 +28,9 @@ type Dao interface {
 	AddEvent(event, host, name string, port int) error
 }
 
-func dialector(args Args) (gorm.Dialector, error) {
-	driver := args.Get("driver").(string)
-	source := args.Get("source").(string)
+func dialector(node tree.Node) (gorm.Dialector, error) {
+	driver := node.GetValue("driver").(string)
+	source := node.GetValue("source").(string)
 	switch driver {
 	case "sqlite":
 		return sqlite.Open(source), nil
@@ -39,10 +40,10 @@ func dialector(args Args) (gorm.Dialector, error) {
 	return nil, fmt.Errorf("unknown driver %s", driver)
 }
 
-func NewDao(args Args) (Dao, error) {
+func NewDao(node tree.Node) (Dao, error) {
 	mode := logger.Default.LogMode(logger.Silent)
 	config := &gorm.Config{Logger: mode}
-	dialector, err := dialector(args)
+	dialector, err := dialector(node)
 	if err != nil {
 		return nil, err
 	}

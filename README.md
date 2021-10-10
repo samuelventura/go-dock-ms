@@ -8,7 +8,7 @@ SSH dock micro service
 # helpers
 
 ```bash
-#FIXME keepalive, mac whitelist, ssh nop log, sock5 nop log
+#FIXME keepalive, mac whitelist, ssh nop log, sock5 nop log, replace connection by mac
 #DOCK_MAXSHIPS=1000
 #DOCK_LOGS=/var/log
 #DOCK_ENDPOINT=0.0.0.0:31652
@@ -61,6 +61,10 @@ ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-sh.key
 curl -vx socks5h://127.0.0.1:64438 http://google.com/
 #timeout tryout
 nc -l 31699
-(cd go-dock-to && go install && go-dock-to 127.0.0.1:64438 localhost:31699)
+export TPORT=49691
+(cd go-dock-to && go install && go-dock-to 127.0.0.1:$TPORT localhost:31699)
 killall go-dock-to
+#kill and dump stacktrace
+ps -A | grep go-
+kill -ABRT <pid>
 ```

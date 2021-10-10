@@ -9,22 +9,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samuelventura/go-tree"
 	"golang.org/x/crypto/ssh"
 )
 
-func sshd(args Args) *Result {
-	dao := args.Get("dao").(Dao)
-	host := args.Get("hostname").(string)
-	endpoint := args.Get("endpoint").(string)
-	hostkey := args.Get("hostkey").(string)
-	maxships := args.Get("maxships").(int64)
+func sshd(node tree.Node) error {
+	dao := node.GetValue("dao").(Dao)
+	host := node.GetValue("hostname").(string)
+	endpoint := node.GetValue("endpoint").(string)
+	hostkey := node.GetValue("hostkey").(string)
+	maxships := node.GetValue("maxships").(int64)
 	privateBytes, err := ioutil.ReadFile(hostkey)
 	if err != nil {
-		return &Result{err: err}
+		return err
 	}
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		return &Result{err: err}
+		return err
 	}
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
@@ -48,155 +49,151 @@ func sshd(args Args) *Result {
 		},
 	}
 	config.AddHostKey(private)
+	node.SetValue("config", config)
 	listen, err := net.Listen("tcp", endpoint)
 	if err != nil {
-		return &Result{err: err}
+		return err
 	}
+	node.AddCloser("listen", listen.Close)
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port", port)
-	args.Set("port", port)
-	closer := NewCloser(func() {
-		err := listen.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	})
-	args.Set("closer", closer)
-	args.Set("config", config)
-	go func() {
+	node.SetValue("port", port)
+	node.Go("listen", func() {
+		defer node.Close()
+		id := NewId("ssh-" + listen.Addr().String())
 		for {
 			tcpConn, err := listen.Accept()
 			if err != nil {
 				log.Println(err)
-				closer.Close()
 				return
 			}
 			count, err := dao.CountShips(host)
-			if err != nil || count >= maxships {
+			if err != nil {
+				log.Fatalln(err)
+				return
+			}
+			if count >= maxships {
 				log.Println("max ships", maxships, count, err)
 				tcpConn.Close()
 				continue
 			}
-			go handleSshConnection(args.Clone(), tcpConn)
+			addr := tcpConn.RemoteAddr().String()
+			cid := id.Next(addr)
+			child := node.Child(cid)
+			if child == nil {
+				tcpConn.Close()
+				continue
+			}
+			child.AddCloser("tcpConn", tcpConn.Close)
+			go handleSshConnection(child, tcpConn)
 		}
-	}()
-	return closer.Result()
+	})
+	return nil
 }
 
-func handleSshConnection(args Args, tcpConn net.Conn) {
-	defer tcpConn.Close()
+func handleSshConnection(node tree.Node, tcpConn net.Conn) {
+	defer node.Close()
 	err := keepAlive(tcpConn)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	dao := args.Get("dao").(Dao)
-	host := args.Get("hostname").(string)
-	closer := args.Get("closer").(*Closer)
-	config := args.Get("config").(*ssh.ServerConfig)
-	closed := make(chan interface{})
-	defer close(closed)
-	args.Set("closed", closed)
+	dao := node.GetValue("dao").(Dao)
+	host := node.GetValue("hostname").(string)
+	config := node.GetValue("config").(*ssh.ServerConfig)
 	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	defer sshConn.Close()
-	args.Set("ssh", sshConn)
+	node.AddCloser("sshConn", sshConn.Close)
+	node.SetValue("ssh", sshConn)
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	defer listen.Close()
+	node.AddCloser("listen", listen.Close)
 	ship := sshConn.User()
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println(port, ship)
-	args.Set("proxy", port)
+	node.SetValue("proxy", port)
 	err = dao.AddEvent("open", host, ship, port)
 	if err != nil {
-		log.Println(err)
-		closer.Close()
+		log.Fatalln(err)
 		return
 	}
 	err = dao.SetShip(host, ship, port)
 	if err != nil {
-		log.Println(err)
-		closer.Close()
+		log.Fatalln(err)
 		return
 	}
 	defer func() {
 		err := dao.ClearShip(host, port)
 		if err != nil {
-			log.Println(err)
-			closer.Close()
+			log.Fatalln(err)
 		}
 		err = dao.AddEvent("close", host, ship, port)
 		if err != nil {
-			log.Println(err)
-			closer.Close()
+			log.Fatalln(err)
 		}
 	}()
-	go func() {
-		defer listen.Close()
-		select {
-		case <-closed:
-		case <-closer.Channel():
-		}
-	}()
-	go func() {
-		defer log.Println(port, "channel handler exited")
-		defer listen.Close()
+	node.Go("ssh chans reject", func() {
+		defer node.Close()
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")
 		}
-	}()
-	go func() {
-		defer log.Println(port, "request handler exited")
-		defer listen.Close()
+	})
+	node.Go("ssh reqs reply", func() {
+		defer node.Close()
 		for req := range reqs {
 			if req.WantReply {
 				req.Reply(false, nil)
 			}
 		}
-	}()
-	go func() {
-		defer log.Println(port, "ping handler exited")
-		defer listen.Close()
+	})
+	node.Go("ssh ping handler", func() {
+		defer node.Close()
 		for {
 			dl := time.Now().Add(10 * time.Second)
 			resp, _, err := sshConn.SendRequest("ping", true, nil)
 			if time.Now().After(dl) || err != nil || !resp {
-				log.Println("ping timeout")
+				log.Println(port, "ping timeout")
 				return
 			}
 			timer := time.NewTimer(5 * time.Second)
 			select {
 			case <-timer.C:
 				continue
-			case <-closed:
+			case <-node.Closed():
 				timer.Stop()
 				return
 			}
 		}
-	}()
+	})
+	id := NewId("proxy-" + listen.Addr().String())
 	for {
 		proxyConn, err := listen.Accept()
 		if err != nil {
 			log.Println(port, err)
 			break
 		}
-		go handleProxyConnection(args.Clone(), proxyConn)
+		addr := proxyConn.RemoteAddr().String()
+		cid := id.Next(addr)
+		child := node.Child(cid)
+		if child == nil {
+			proxyConn.Close()
+			continue
+		}
+		child.AddCloser("proxyConn", proxyConn.Close)
+		go handleProxyConnection(child, proxyConn)
 	}
 }
 
-func handleProxyConnection(args Args, proxyConn net.Conn) {
-	defer proxyConn.Close()
-	port := args.Get("proxy").(int)
-	sshConn := args.Get("ssh").(*ssh.ServerConn)
-	closed := args.Get("closed").(chan interface{})
-	closer := args.Get("closer").(*Closer)
+func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
+	defer node.Close()
+	port := node.GetValue("proxy").(int)
+	sshConn := node.GetValue("ssh").(*ssh.ServerConn)
 	err := keepAlive(proxyConn)
 	if err != nil {
 		log.Println(port, err)
@@ -239,26 +236,21 @@ func handleProxyConnection(args Args, proxyConn net.Conn) {
 		log.Println(port, err)
 		return
 	}
-	defer sshChan.Close()
-	go ssh.DiscardRequests(reqChan)
-	done := make(chan interface{})
-	go func() {
+	node.AddCloser("sshChan", sshChan.Close)
+	node.Go("DiscardRequests(reqChan)", func() { ssh.DiscardRequests(reqChan) })
+	node.Go("Copy(sshChan, proxyConn)", func() {
+		defer node.Close()
 		_, err := io.Copy(sshChan, proxyConn)
 		if err != nil {
 			log.Println(port, err)
 		}
-		done <- true
-	}()
-	go func() {
+	})
+	node.Go("Copy(proxyConn, sshChan)", func() {
+		defer node.Close()
 		_, err := io.Copy(proxyConn, sshChan)
 		if err != nil {
 			log.Println(port, err)
 		}
-		done <- true
-	}()
-	select {
-	case <-done:
-	case <-closed:
-	case <-closer.Channel():
-	}
+	})
+	<-node.Closed()
 }

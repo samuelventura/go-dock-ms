@@ -5,22 +5,27 @@ import (
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/samuelventura/go-tree"
 )
 
 func main() {
+	os.Setenv("GOTRACEBACK", "all")
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetOutput(os.Stdout)
 
 	ctrlc := make(chan os.Signal, 1)
 	signal.Notify(ctrlc, os.Interrupt)
 
-	log.Println("starting...")
+	log.Println(os.Getpid(), "starting...")
 	defer log.Println("exit")
-	r := run(args())
-	if r.err != nil {
-		log.Fatal(r.err)
+	node := root()
+	defer node.Wait()
+	defer node.Close()
+	err := run(node)
+	if err != nil {
+		log.Fatal(err)
 	}
-	defer r.close()
 
 	stdin := make(chan interface{})
 	go func() {
@@ -28,13 +33,16 @@ func main() {
 		ioutil.ReadAll(os.Stdin)
 	}()
 	select {
-	case <-r.closed:
+	case <-node.Closed():
+		log.Println("root closed")
 	case <-ctrlc:
+		log.Println("ctrlc interrupt")
 	case <-stdin:
+		log.Println("stdin closed")
 	}
 }
 
-func args() Args {
+func root() tree.Node {
 	source, err := withext("db3")
 	if err != nil {
 		log.Fatal(err)
@@ -47,26 +55,26 @@ func args() Args {
 	if err != nil {
 		log.Fatal(err)
 	}
-	args := NewArgs()
-	args.Set("hostname", getenv("DOCK_HOSTNAME", hostname))
-	args.Set("source", getenv("DOCK_DB_SOURCE", source))
-	args.Set("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
-	args.Set("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31652"))
-	args.Set("maxships", getenvi("DOCK_MAXSHIPS", 1000))
-	args.Set("hostkey", getenv("DOCK_HOSTKEY", hostkey))
-	return args
+	node := tree.NewRoot(nil)
+	node.SetValue("hostname", getenv("DOCK_HOSTNAME", hostname))
+	node.SetValue("source", getenv("DOCK_DB_SOURCE", source))
+	node.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
+	node.SetValue("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31652"))
+	node.SetValue("maxships", getenvi("DOCK_MAXSHIPS", 1000))
+	node.SetValue("hostkey", getenv("DOCK_HOSTKEY", hostkey))
+	return node
 }
 
-func run(args Args) *Result {
-	dao, err := NewDao(args)
+func run(node tree.Node) error {
+	dao, err := NewDao(node)
 	if err != nil {
-		return &Result{err: err}
+		return err
 	}
-	args.Set("dao", dao)
-	hostname := args.Get("hostname").(string)
+	node.SetValue("dao", dao)
+	hostname := node.GetValue("hostname").(string)
 	err = dao.ClearShips(hostname)
 	if err != nil {
-		return &Result{err: err}
+		return err
 	}
-	return sshd(args)
+	return sshd(node)
 }
