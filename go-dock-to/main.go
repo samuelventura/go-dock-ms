@@ -1,14 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"time"
-
-	"golang.org/x/net/proxy"
 )
 
 func main() {
@@ -21,22 +20,23 @@ func main() {
 	proxyurl := os.Args[1]
 	address := os.Args[2]
 
-	dialer, err := proxy.SOCKS5("tcp", proxyurl, nil,
-		&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		},
-	)
+	conn, err := net.DialTimeout("tcp", proxyurl, 5*time.Second)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	conn, err := dialer.Dial("tcp", address)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	defer conn.Close()
 
+	line := fmt.Sprintln(address)
+	n, err := conn.Write([]byte(line))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if n != len(line) {
+		log.Println(fmt.Errorf("write mismatch %d %d", len(line), n))
+		return
+	}
 	done := make(chan interface{})
 	go func() {
 		io.Copy(os.Stdout, conn)

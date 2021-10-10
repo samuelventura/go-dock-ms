@@ -62,10 +62,11 @@ func run(args Args) *Result {
 	if err != nil {
 		return &Result{err: err}
 	}
-	err = dao.ClearShips(args.Get("hostname").(string))
+	args.Set("dao", dao)
+	hostname := args.Get("hostname").(string)
+	err = dao.ClearShips(hostname)
 	if err != nil {
 		return &Result{err: err}
 	}
-	args.Set("dao", dao)
 	return sshd(args)
 }

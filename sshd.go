@@ -1,16 +1,14 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/armon/go-socks5"
-	"github.com/felixge/tcpkeepalive"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -56,13 +54,14 @@ func sshd(args Args) *Result {
 	}
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port", port)
+	args.Set("port", port)
 	closer := NewCloser(func() {
 		err := listen.Close()
 		if err != nil {
 			log.Println(err)
 		}
 	})
-	args.Set("parent", closer)
+	args.Set("closer", closer)
 	args.Set("config", config)
 	go func() {
 		for {
@@ -78,81 +77,74 @@ func sshd(args Args) *Result {
 				tcpConn.Close()
 				continue
 			}
-			go handleConnection(args, tcpConn)
+			go handleSshConnection(args.Clone(), tcpConn)
 		}
 	}()
 	return closer.Result()
 }
 
-func handleConnection(args Args, tcpConn net.Conn) {
+func handleSshConnection(args Args, tcpConn net.Conn) {
+	defer tcpConn.Close()
+	err := keepAlive(tcpConn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	dao := args.Get("dao").(Dao)
 	host := args.Get("hostname").(string)
-	parent := args.Get("parent").(*Closer)
+	closer := args.Get("closer").(*Closer)
 	config := args.Get("config").(*ssh.ServerConfig)
 	closed := make(chan interface{})
 	defer close(closed)
-	defer tcpConn.Close()
+	args.Set("closed", closed)
 	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer sshConn.Close()
-	ship := sshConn.User()
+	args.Set("ssh", sshConn)
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer listen.Close()
+	ship := sshConn.User()
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println(port, ship)
+	args.Set("proxy", port)
 	err = dao.AddEvent("open", host, ship, port)
 	if err != nil {
 		log.Println(err)
-		parent.Close()
+		closer.Close()
 		return
 	}
 	err = dao.SetShip(host, ship, port)
 	if err != nil {
 		log.Println(err)
-		parent.Close()
+		closer.Close()
 		return
 	}
 	defer func() {
 		err := dao.ClearShip(host, port)
 		if err != nil {
 			log.Println(err)
-			parent.Close()
+			closer.Close()
 		}
 		err = dao.AddEvent("close", host, ship, port)
 		if err != nil {
 			log.Println(err)
-			parent.Close()
+			closer.Close()
 		}
 	}()
 	go func() {
 		defer listen.Close()
 		select {
 		case <-closed:
-		case <-parent.Channel():
+		case <-closer.Channel():
 		}
 	}()
-	conf := &socks5.Config{
-		//FIXME nop logger
-		Logger: log.Default(),
-		//FIXME close on context
-		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			log.Println(port, "dialing", network, addr)
-			sshChan, reqChan, err := sshConn.OpenChannel("forward", []byte(addr))
-			if err != nil {
-				log.Println(port, "dial", err)
-				return nil, err
-			}
-			go ssh.DiscardRequests(reqChan)
-			return &channelConn{sshChan}, nil
-		},
-	}
 	go func() {
 		defer log.Println(port, "channel handler exited")
 		defer listen.Close()
@@ -171,12 +163,12 @@ func handleConnection(args Args, tcpConn net.Conn) {
 	}()
 	go func() {
 		defer log.Println(port, "ping handler exited")
+		defer listen.Close()
 		for {
 			dl := time.Now().Add(10 * time.Second)
 			resp, _, err := sshConn.SendRequest("ping", true, nil)
 			if time.Now().After(dl) || err != nil || !resp {
 				log.Println("ping timeout")
-				listen.Close()
 				return
 			}
 			timer := time.NewTimer(5 * time.Second)
@@ -189,76 +181,84 @@ func handleConnection(args Args, tcpConn net.Conn) {
 			}
 		}
 	}()
-	server, err := socks5.New(conf)
+	for {
+		proxyConn, err := listen.Accept()
+		if err != nil {
+			log.Println(port, err)
+			break
+		}
+		go handleProxyConnection(args.Clone(), proxyConn)
+	}
+}
+
+func handleProxyConnection(args Args, proxyConn net.Conn) {
+	defer proxyConn.Close()
+	port := args.Get("proxy").(int)
+	sshConn := args.Get("ssh").(*ssh.ServerConn)
+	closed := args.Get("closed").(chan interface{})
+	closer := args.Get("closer").(*Closer)
+	err := keepAlive(proxyConn)
 	if err != nil {
 		log.Println(port, err)
 		return
 	}
-	err = server.Serve(&Listener{listen})
+	err = proxyConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	if err != nil {
 		log.Println(port, err)
+		return
 	}
-}
-
-type channelConn struct {
-	sshch ssh.Channel
-}
-
-func (cc *channelConn) Read(b []byte) (n int, err error) {
-	return cc.sshch.Read(b)
-}
-
-func (cc *channelConn) Write(b []byte) (n int, err error) {
-	return cc.sshch.Write(b)
-}
-
-func (cc *channelConn) Close() error {
-	//FIXME implement keepalive
-	log.Println("closing connection...")
-	return cc.sshch.Close()
-}
-
-func (cc *channelConn) LocalAddr() net.Addr {
-	return &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0}
-}
-
-func (cc *channelConn) RemoteAddr() net.Addr {
-	return &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0}
-}
-
-func (cc *channelConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (cc *channelConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (cc *channelConn) SetWriteDeadline(t time.Time) error {
-	return nil
-}
-
-type Listener struct {
-	listener net.Listener
-}
-
-func (l *Listener) Accept() (net.Conn, error) {
-	c, err := l.listener.Accept()
+	var sb strings.Builder
+	ba := make([]byte, 1)
+	for {
+		n, err := proxyConn.Read(ba)
+		if err != nil {
+			log.Println(port, err)
+			return
+		}
+		if n != 1 {
+			log.Println(port, fmt.Errorf("invalid read %d", n))
+			return
+		}
+		err = sb.WriteByte(ba[0])
+		if err != nil {
+			log.Println(port, err)
+			return
+		}
+		if ba[0] == 0x0A {
+			break
+		}
+	}
+	err = proxyConn.SetReadDeadline(time.Time{})
 	if err != nil {
-		return nil, err
+		log.Println(port, err)
+		return
 	}
-	err = tcpkeepalive.SetKeepAlive(c, 5*time.Second, 3, 1*time.Second)
+	addr := strings.TrimSpace(sb.String())
+	sshChan, reqChan, err := sshConn.OpenChannel("forward", []byte(addr))
 	if err != nil {
-		c.Close()
-		return nil, err
+		log.Println(port, err)
+		return
 	}
-	return c, nil
-}
-
-func (l *Listener) Close() error {
-	return l.listener.Close()
-}
-
-func (l *Listener) Addr() net.Addr {
-	return l.listener.Addr()
+	defer sshChan.Close()
+	go ssh.DiscardRequests(reqChan)
+	done := make(chan interface{})
+	go func() {
+		_, err := io.Copy(sshChan, proxyConn)
+		if err != nil {
+			log.Println(port, err)
+		}
+		done <- true
+	}()
+	go func() {
+		_, err := io.Copy(proxyConn, sshChan)
+		if err != nil {
+			log.Println(port, err)
+		}
+		done <- true
+	}()
+	select {
+	case <-done:
+	case <-closed:
+	case <-closer.Channel():
+	}
 }

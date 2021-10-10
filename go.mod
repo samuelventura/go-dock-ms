@@ -3,11 +3,9 @@ module github.com/samuelventura/go-dock-ms
 go 1.17
 
 require (
-	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e
 	github.com/kardianos/service v1.2.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	golang.org/x/net v0.0.0-20211008194852-3b03d305991f
 	gorm.io/driver/postgres v1.1.2
 	gorm.io/driver/sqlite v1.1.5
 	gorm.io/gorm v1.21.15
