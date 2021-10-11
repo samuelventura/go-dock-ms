@@ -58,8 +58,7 @@ func sshd(node tree.Node) error {
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port", port)
 	node.SetValue("port", port)
-	node.Go("listen", func() {
-		defer node.Close()
+	node.AddProcess("listen", func() {
 		id := NewId("ssh-" + listen.Addr().String())
 		for {
 			tcpConn, err := listen.Accept()
@@ -138,22 +137,19 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn) {
 			log.Fatalln(err)
 		}
 	}()
-	node.Go("ssh chans reject", func() {
-		defer node.Close()
+	node.AddProcess("ssh chans reject", func() {
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")
 		}
 	})
-	node.Go("ssh reqs reply", func() {
-		defer node.Close()
+	node.AddProcess("ssh reqs reply", func() {
 		for req := range reqs {
 			if req.WantReply {
 				req.Reply(false, nil)
 			}
 		}
 	})
-	node.Go("ssh ping handler", func() {
-		defer node.Close()
+	node.AddProcess("ssh ping handler", func() {
 		for {
 			dl := time.Now().Add(10 * time.Second)
 			resp, _, err := sshConn.SendRequest("ping", true, nil)
@@ -237,16 +233,14 @@ func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
 		return
 	}
 	node.AddCloser("sshChan", sshChan.Close)
-	node.Go("DiscardRequests(reqChan)", func() { ssh.DiscardRequests(reqChan) })
-	node.Go("Copy(sshChan, proxyConn)", func() {
-		defer node.Close()
+	node.AddProcess("DiscardRequests(reqChan)", func() { ssh.DiscardRequests(reqChan) })
+	node.AddProcess("Copy(sshChan, proxyConn)", func() {
 		_, err := io.Copy(sshChan, proxyConn)
 		if err != nil {
 			log.Println(port, err)
 		}
 	})
-	node.Go("Copy(proxyConn, sshChan)", func() {
-		defer node.Close()
+	node.AddProcess("Copy(proxyConn, sshChan)", func() {
 		_, err := io.Copy(proxyConn, sshChan)
 		if err != nil {
 			log.Println(port, err)

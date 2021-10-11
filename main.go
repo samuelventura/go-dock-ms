@@ -55,7 +55,7 @@ func root() tree.Node {
 	if err != nil {
 		log.Fatal(err)
 	}
-	node := tree.NewRoot(nil)
+	node := tree.NewRoot("root", nil)
 	node.SetValue("hostname", getenv("DOCK_HOSTNAME", hostname))
 	node.SetValue("source", getenv("DOCK_DB_SOURCE", source))
 	node.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
