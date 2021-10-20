@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e
 	github.com/kardianos/service v1.2.0
-	github.com/samuelventura/go-tree v0.0.0-20211011031750-0ea1a9101c98
+	github.com/samuelventura/go-tree v0.0.0-20211013044031-aa973f171333
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	gorm.io/driver/postgres v1.1.2
 	gorm.io/driver/sqlite v1.1.6

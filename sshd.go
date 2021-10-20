@@ -84,14 +84,15 @@ func sshd(node tree.Node) error {
 				continue
 			}
 			child.AddCloser("tcpConn", tcpConn.Close)
-			go handleSshConnection(child, tcpConn)
+			child.AddProcess("tcpConn", func() {
+				handleSshConnection(child, tcpConn)
+			})
 		}
 	})
 	return nil
 }
 
 func handleSshConnection(node tree.Node, tcpConn net.Conn) {
-	defer node.Close()
 	err := keepAlive(tcpConn)
 	if err != nil {
 		log.Println(err)
@@ -182,7 +183,9 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn) {
 			continue
 		}
 		child.AddCloser("proxyConn", proxyConn.Close)
-		go handleProxyConnection(child, proxyConn)
+		child.AddProcess("proxyConn", func() {
+			handleProxyConnection(child, proxyConn)
+		})
 	}
 }
 

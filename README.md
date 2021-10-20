@@ -5,7 +5,28 @@ SSH dock micro service
 - Reverse SOCKS proxy only
 - TXT record load balancing
 
-# helpers
+## development
+
+```bash
+#dock service
+ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-ms.key
+sqlite3 ~/go/bin/go-dock-ms.db3 "delete from key_dros"
+sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`', 'default', readfile('$HOME/github/go-dock-ms/id_rsa.pub'))"
+sqlite3 ~/go/bin/go-dock-ms.db3 "select * from key_dros"
+go install && go-dock-ms
+#ship instance
+ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-sh.key
+(cd go-dock-sh && go install && go-dock-sh)
+#use the proxy
+(cd go-dock-to && go install && go-dock-to 127.0.0.1:$PORT localhost:31699)
+GET /
+#kill and dump stacktrace to test timeout
+killall go-dock-to
+ps -A | grep go-
+kill -ABRT <pid>
+```
+
+## helpers
 
 ```bash
 #FIXME keepalive, mac whitelist, ssh nop log, sock5 nop log, replace connection by mac
@@ -45,26 +66,4 @@ sudo apt install build-essentials
 dig dock.domain.tld TXT
 ```
 
-# development
 
-```bash
-#dock service
-ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-ms.key
-sqlite3 ~/go/bin/go-dock-ms.db3 "delete from key_dros"
-sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (host, name, key) values ('`hostname`', 'default', readfile('$HOME/github/go-dock-ms/id_rsa.pub'))"
-sqlite3 ~/go/bin/go-dock-ms.db3 "select * from key_dros"
-go install && go-dock-ms
-#ship instance
-ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-sh.key
-(cd go-dock-sh && go install && go-dock-sh)
-#curl
-curl -vx socks5h://127.0.0.1:64438 http://google.com/
-#timeout tryout
-nc -l 31699
-export TPORT=49691
-(cd go-dock-to && go install && go-dock-to 127.0.0.1:$TPORT localhost:31699)
-killall go-dock-to
-#kill and dump stacktrace
-ps -A | grep go-
-kill -ABRT <pid>
-```
