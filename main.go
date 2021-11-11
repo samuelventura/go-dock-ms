@@ -21,8 +21,7 @@ func main() {
 	log.Println("start", os.Getpid())
 	defer log.Println("exit")
 
-	rlog := tree.NewLog()
-	rnode := tree.NewRoot("root", rlog)
+	rnode := tree.NewRoot("root", log.Println)
 	defer rnode.WaitDisposed()
 	//recover closes as well
 	defer rnode.Recover()
@@ -45,7 +44,7 @@ func main() {
 	anode.SetValue("hostkey", getenv("DOCK_HOSTKEY", withext("key")))
 	anode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
 
-	dao := NewDao(anode)
+	dao := NewDao(anode) //close on root
 	rnode.AddCloser("dao", dao.Close)
 	anode.SetValue("dao", dao)
 	dao.ClearShips(host)
