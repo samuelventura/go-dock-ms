@@ -13,8 +13,9 @@ if [[ "$OSTYPE" == "linux"* ]]; then
     curl -X POST http://127.0.0.1:31600/api/daemon/uninstall/$DAEMON
     sudo cp $SRC/$BINARY $DST
     curl -X POST http://127.0.0.1:31600/api/daemon/install/$DAEMON?path=$DST/$BINARY
-    curl -X POST http://127.0.0.1:31600/api/daemon/env/$DAEMON \
-        -H "DaemonEnviron: DOCK_HOSTKEY=$HOME/.ssh/id_rsa"
+    # do not touch working environment
+    # curl -X POST http://127.0.0.1:31600/api/daemon/env/$DAEMON \
+    #     -H "DaemonEnviron: DOCK_HOSTKEY=$HOME/.ssh/id_rsa"
     curl -X POST http://127.0.0.1:31600/api/daemon/enable/$DAEMON
     curl -X POST http://127.0.0.1:31600/api/daemon/start/$DAEMON
     curl -X GET http://127.0.0.1:31600/api/daemon/info/$DAEMON
