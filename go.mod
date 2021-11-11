@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e
-	github.com/kardianos/service v1.2.0
+	github.com/samuelventura/go-state v0.1.1-0.20211110191252-c77760465ea8
 	github.com/samuelventura/go-tree v0.1.1-0.20211110191127-5c4afc90c09b
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	gorm.io/driver/postgres v1.1.2
@@ -24,7 +24,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.14.8 // indirect
-	github.com/samuelventura/go-state v0.1.1-0.20211110191252-c77760465ea8 // indirect
 	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
