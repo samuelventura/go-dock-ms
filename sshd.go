@@ -193,7 +193,6 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 }
 
 func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
-	defer node.Close()
 	port := node.GetValue("proxy").(int)
 	sshConn := node.GetValue("ssh").(*ssh.ServerConn)
 	err := keepAlive(proxyConn)
