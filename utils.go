@@ -19,7 +19,8 @@ func keepAlive(conn net.Conn) error {
 
 func getenv(name string, defval string) string {
 	value := os.Getenv(name)
-	if len(strings.TrimSpace(value)) > 0 {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) > 0 {
 		log.Println(name, value)
 		return value
 	}
@@ -27,27 +28,29 @@ func getenv(name string, defval string) string {
 	return defval
 }
 
-func getenvi(name string, defval int64) int64 {
-	value := os.Getenv(name)
-	if len(strings.TrimSpace(value)) > 0 {
-		log.Println(name, value)
-		val, err := strconv.Atoi(value)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return int64(val)
+func getenvi(name string, defval string) int64 {
+	value, err := strconv.Atoi(getenv(name, defval))
+	if err != nil {
+		log.Fatal(err)
 	}
-	log.Println(name, defval)
-	return defval
+	return int64(value)
 }
 
-func withext(ext string) (string, error) {
+func withext(ext string) string {
 	exe, err := os.Executable()
 	if err != nil {
-		return "", err
+		log.Fatal(err)
 	}
 	dir := filepath.Dir(exe)
 	base := filepath.Base(exe)
 	file := base + "." + ext
-	return filepath.Join(dir, file), nil
+	return filepath.Join(dir, file)
+}
+
+func hostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return hostname
 }

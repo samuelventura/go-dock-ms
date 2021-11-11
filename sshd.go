@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func sshd(node tree.Node) error {
+func sshd(node tree.Node) {
 	dao := node.GetValue("dao").(Dao)
 	host := node.GetValue("hostname").(string)
 	endpoint := node.GetValue("endpoint").(string)
@@ -21,11 +21,11 @@ func sshd(node tree.Node) error {
 	maxships := node.GetValue("maxships").(int64)
 	privateBytes, err := ioutil.ReadFile(hostkey)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
@@ -37,8 +37,7 @@ func sshd(node tree.Node) error {
 			for _, dro := range *dros {
 				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(dro.Key))
 				if err != nil {
-					log.Println("Ignoring invalid key", dro.Host, dro.Name)
-					continue
+					log.Fatalln("Ignoring invalid key", dro.Host, dro.Name)
 				}
 				pubtxt := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pubkey)))
 				if pubtxt == inkey {
@@ -52,12 +51,13 @@ func sshd(node tree.Node) error {
 	node.SetValue("config", config)
 	listen, err := net.Listen("tcp", endpoint)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	node.AddCloser("listen", listen.Close)
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port", port)
 	node.SetValue("port", port)
+	ships := NewShips()
 	node.AddProcess("listen", func() {
 		id := NewId("ssh-" + listen.Addr().String())
 		for {
@@ -85,14 +85,13 @@ func sshd(node tree.Node) error {
 			}
 			child.AddCloser("tcpConn", tcpConn.Close)
 			child.AddProcess("tcpConn", func() {
-				handleSshConnection(child, tcpConn)
+				handleSshConnection(child, tcpConn, ships)
 			})
 		}
 	})
-	return nil
 }
 
-func handleSshConnection(node tree.Node, tcpConn net.Conn) {
+func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	err := keepAlive(tcpConn)
 	if err != nil {
 		log.Println(err)
@@ -100,6 +99,7 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn) {
 	}
 	dao := node.GetValue("dao").(Dao)
 	host := node.GetValue("hostname").(string)
+	export := node.GetValue("export").(string)
 	config := node.GetValue("config").(*ssh.ServerConfig)
 	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
 	if err != nil {
@@ -108,15 +108,18 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn) {
 	}
 	node.AddCloser("sshConn", sshConn.Close)
 	node.SetValue("ssh", sshConn)
-	listen, err := net.Listen("tcp", "127.0.0.1:0")
+	listen, err := net.Listen("tcp", fmt.Sprintf("%s:0", export))
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	node.AddCloser("listen", listen.Close)
 	ship := sshConn.User()
+	//replace ship by name
+	ships.Add(ship, node)
+	defer ships.Del(ship, node)
 	port := listen.Addr().(*net.TCPAddr).Port
-	log.Println(port, ship)
+	log.Println(port, ship, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
 	err = dao.AddEvent("open", host, ship, port)
 	if err != nil {

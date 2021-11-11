@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/samuelventura/go-state"
 	"github.com/samuelventura/go-tree"
 )
 
@@ -17,15 +18,38 @@ func main() {
 	ctrlc := make(chan os.Signal, 1)
 	signal.Notify(ctrlc, os.Interrupt)
 
-	log.Println(os.Getpid(), "starting...")
+	log.Println("start", os.Getpid())
 	defer log.Println("exit")
-	node := root()
-	defer node.WaitDisposed()
-	defer node.Close()
-	err := run(node)
-	if err != nil {
-		log.Fatal(err)
-	}
+
+	rlog := tree.NewLog()
+	rnode := tree.NewRoot("root", rlog)
+	defer rnode.WaitDisposed()
+	//recover closes as well
+	defer rnode.Recover()
+
+	spath := state.SingletonPath()
+	snode := state.Serve(rnode, spath)
+	defer snode.WaitDisposed()
+	defer snode.Close()
+	log.Println("socket", spath)
+
+	anode := rnode.AddChild("api")
+	defer anode.WaitDisposed()
+	defer anode.Close()
+	host := hostname()
+	anode.SetValue("hostname", getenv("DOCK_HOSTNAME", host))
+	anode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
+	anode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
+	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31622"))
+	anode.SetValue("maxships", getenvi("DOCK_MAXSHIPS", "1000"))
+	anode.SetValue("hostkey", getenv("DOCK_HOSTKEY", withext("key")))
+	anode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
+
+	dao := NewDao(anode)
+	anode.SetValue("dao", dao)
+	defer dao.Close()
+	dao.ClearShips(host)
+	sshd(anode)
 
 	stdin := make(chan interface{})
 	go func() {
@@ -33,48 +57,10 @@ func main() {
 		ioutil.ReadAll(os.Stdin)
 	}()
 	select {
-	case <-node.Closed():
-		log.Println("root closed")
+	case <-rnode.Closed():
+	case <-snode.Closed():
+	case <-anode.Closed():
 	case <-ctrlc:
-		log.Println("ctrlc interrupt")
 	case <-stdin:
-		log.Println("stdin closed")
 	}
-}
-
-func root() tree.Node {
-	source, err := withext("db3")
-	if err != nil {
-		log.Fatal(err)
-	}
-	hostkey, err := withext("key")
-	if err != nil {
-		log.Fatal(err)
-	}
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatal(err)
-	}
-	node := tree.NewRoot("root", nil)
-	node.SetValue("hostname", getenv("DOCK_HOSTNAME", hostname))
-	node.SetValue("source", getenv("DOCK_DB_SOURCE", source))
-	node.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
-	node.SetValue("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31652"))
-	node.SetValue("maxships", getenvi("DOCK_MAXSHIPS", 1000))
-	node.SetValue("hostkey", getenv("DOCK_HOSTKEY", hostkey))
-	return node
-}
-
-func run(node tree.Node) error {
-	dao, err := NewDao(node)
-	if err != nil {
-		return err
-	}
-	node.SetValue("dao", dao)
-	hostname := node.GetValue("hostname").(string)
-	err = dao.ClearShips(hostname)
-	if err != nil {
-		return err
-	}
-	return sshd(node)
 }

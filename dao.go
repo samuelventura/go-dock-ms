@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/samuelventura/go-tree"
@@ -17,45 +18,43 @@ type daoDso struct {
 
 type Dao interface {
 	Close() error
+	ClearShips(host string)
 	GetKeys(host string) (*[]KeyDro, error)
 	AddKey(host, name, key string) error
 	GetKey(host, name string) (*KeyDro, error)
 	DelKey(host, name string) error
 	CountShips(host string) (int64, error)
-	ClearShips(host string) error
 	ClearShip(host string, port int) error
-	SetShip(host, name string, port int) error
-	AddEvent(event, host, name string, port int) error
+	SetShip(host, ship string, port int) error
+	AddEvent(event, host, ship string, port int) error
 }
 
-func dialector(node tree.Node) (gorm.Dialector, error) {
+func dialector(node tree.Node) gorm.Dialector {
 	driver := node.GetValue("driver").(string)
 	source := node.GetValue("source").(string)
 	switch driver {
 	case "sqlite":
-		return sqlite.Open(source), nil
+		return sqlite.Open(source)
 	case "postgres":
-		return postgres.Open(source), nil
+		return postgres.Open(source)
 	}
-	return nil, fmt.Errorf("unknown driver %s", driver)
+	log.Fatalf("unknown driver %s", driver)
+	return nil
 }
 
-func NewDao(node tree.Node) (Dao, error) {
+func NewDao(node tree.Node) Dao {
 	mode := logger.Default.LogMode(logger.Silent)
 	config := &gorm.Config{Logger: mode}
-	dialector, err := dialector(node)
-	if err != nil {
-		return nil, err
-	}
+	dialector := dialector(node)
 	db, err := gorm.Open(dialector, config)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 	err = db.AutoMigrate(&KeyDro{}, &ShipDro{}, &LogDro{})
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
-	return &daoDso{db}, nil
+	return &daoDso{db}
 }
 
 func (dso *daoDso) Close() error {
@@ -68,6 +67,16 @@ func (dso *daoDso) Close() error {
 		return err
 	}
 	return nil
+}
+
+func (dso *daoDso) ClearShips(host string) {
+	dro := &ShipDro{}
+	result := dso.db.
+		Where("host = ?", host).
+		Delete(dro)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
 }
 
 func (dso *daoDso) GetKeys(host string) (*[]KeyDro, error) {
@@ -112,19 +121,11 @@ func (dso *daoDso) CountShips(host string) (int64, error) {
 	return count, result.Error
 }
 
-func (dso *daoDso) ClearShips(host string) error {
-	dro := &ShipDro{}
-	result := dso.db.
-		Where("host = ?", host).
-		Delete(dro)
-	return result.Error
-}
-
-func (dso *daoDso) SetShip(host, name string, port int) error {
+func (dso *daoDso) SetShip(host, ship string, port int) error {
 	dro := &ShipDro{}
 	dro.When = time.Now()
 	dro.Host = host
-	dro.Name = name
+	dro.Ship = ship
 	dro.Port = port
 	result := dso.db.Create(dro)
 	return result.Error
@@ -139,12 +140,12 @@ func (dso *daoDso) ClearShip(host string, port int) error {
 	return result.Error
 }
 
-func (dso *daoDso) AddEvent(event, host, name string, port int) error {
+func (dso *daoDso) AddEvent(event, host, ship string, port int) error {
 	dro := &LogDro{}
 	dro.Event = event
 	dro.When = time.Now()
 	dro.Host = host
-	dro.Name = name
+	dro.Ship = ship
 	dro.Port = port
 	result := dso.db.Create(dro)
 	return result.Error
