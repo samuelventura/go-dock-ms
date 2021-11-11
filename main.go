@@ -46,8 +46,8 @@ func main() {
 	anode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
 
 	dao := NewDao(anode)
+	rnode.AddCloser("dao", dao.Close)
 	anode.SetValue("dao", dao)
-	defer dao.Close()
 	dao.ClearShips(host)
 	sshd(anode)
 
