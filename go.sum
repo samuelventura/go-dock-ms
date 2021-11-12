@@ -99,8 +99,16 @@ github.com/rs/zerolog v1.13.0/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OK
 github.com/rs/zerolog v1.15.0/go.mod h1:xYTKnLHcpfU2225ny5qZjxnj9NvkumZYjJHlAThCjNc=
 github.com/samuelventura/go-state v0.1.1-0.20211111191711-4255471006a4 h1:mLwp6zzBqkkBt5xabgw+rAlQgmW0ahva7l3idtQPfrY=
 github.com/samuelventura/go-state v0.1.1-0.20211111191711-4255471006a4/go.mod h1:LzNs257aKwMW5KK5jy7rpEt3LPZ0okt+j4TNH/DmFDI=
+github.com/samuelventura/go-state v0.1.1-0.20211112002949-2d94175ffc52 h1:bEh5eJNwxuprlihzt2bID28ZIsJ91sG8LSqs6eTf86o=
+github.com/samuelventura/go-state v0.1.1-0.20211112002949-2d94175ffc52/go.mod h1:lywCfBpnsz0M6UQ14mWu53aCI/rnrqLh4t3wjkHouV4=
+github.com/samuelventura/go-state v0.1.1-0.20211112004156-59e1c7c09c44 h1:7pJzkdP1F2l6Yn+6TLG4GfFCQjxYeZtIOWDBkUuNxw4=
+github.com/samuelventura/go-state v0.1.1-0.20211112004156-59e1c7c09c44/go.mod h1:r9XvnIn15NN+thekCpqfyuWPKNdnSk4uzAxYVrNHg10=
 github.com/samuelventura/go-tree v0.1.1-0.20211111191431-a42fa947d0d9 h1:HdjS9s/8XGkiJvua6iCS3wI6Y7wnPdXIhitf3G4bGuU=
 github.com/samuelventura/go-tree v0.1.1-0.20211111191431-a42fa947d0d9/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
+github.com/samuelventura/go-tree v0.1.1-0.20211112002600-cf8437c85ddc h1:pUH9xsql2JaqvyqJtWa77ZF4UMZarHV8+smriHJ/5F4=
+github.com/samuelventura/go-tree v0.1.1-0.20211112002600-cf8437c85ddc/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
+github.com/samuelventura/go-tree v0.1.1-0.20211112004052-bed2a01c611d h1:Bwe7DmDY6B1qNuOhkpsiGMtXk08g9WAPPkYqR7qxErE=
+github.com/samuelventura/go-tree v0.1.1-0.20211112004052-bed2a01c611d/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v1.2.0 h1:abSATXmQEYyShuxI4/vyW3tV1MrKAJzCZ/0zLUXYbsQ=

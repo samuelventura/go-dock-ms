@@ -76,6 +76,7 @@ func sshd(node tree.Node) {
 				tcpConn.Close()
 				continue
 			}
+			defer node.IfRecoverCloser(tcpConn.Close)
 			addr := tcpConn.RemoteAddr().String()
 			cid := id.Next(addr)
 			child := node.AddChild(cid)
@@ -174,6 +175,7 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 			log.Println(port, err)
 			break
 		}
+		defer node.IfRecoverCloser(proxyConn.Close)
 		addr := proxyConn.RemoteAddr().String()
 		cid := id.Next(addr)
 		child := node.AddChild(cid)
