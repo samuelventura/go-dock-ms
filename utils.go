@@ -12,9 +12,12 @@ import (
 	"github.com/felixge/tcpkeepalive"
 )
 
-func keepAlive(conn net.Conn) error {
-	return tcpkeepalive.SetKeepAlive(
+func keepAlive(conn net.Conn) {
+	err := tcpkeepalive.SetKeepAlive(
 		conn, 5*time.Second, 3, 1*time.Second)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getenv(name string, defval string) string {
@@ -45,12 +48,4 @@ func withext(ext string) string {
 	base := filepath.Base(exe)
 	file := base + "." + ext
 	return filepath.Join(dir, file)
-}
-
-func hostname() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return hostname
 }

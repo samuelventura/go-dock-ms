@@ -15,7 +15,6 @@ import (
 
 func sshd(node tree.Node) {
 	dao := node.GetValue("dao").(Dao)
-	host := node.GetValue("hostname").(string)
 	endpoint := node.GetValue("endpoint").(string)
 	hostkey := node.GetValue("hostkey").(string)
 	maxships := node.GetValue("maxships").(int64)
@@ -30,14 +29,11 @@ func sshd(node tree.Node) {
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 			inkey := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
-			dros, err := dao.GetKeys(host)
-			if err != nil {
-				return nil, err
-			}
+			dros := dao.GetKeys()
 			for _, dro := range *dros {
 				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(dro.Key))
 				if err != nil {
-					log.Fatalln("Ignoring invalid key", dro.Host, dro.Name)
+					log.Fatalln("Ignoring invalid key", dro.Name)
 				}
 				pubtxt := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pubkey)))
 				if pubtxt == inkey {
@@ -66,13 +62,9 @@ func sshd(node tree.Node) {
 				log.Println(err)
 				return
 			}
-			count, err := dao.CountShips(host)
-			if err != nil {
-				log.Fatalln(err)
-				return
-			}
+			count := int64(ships.Count())
 			if count >= maxships {
-				log.Println("max ships", maxships, count, err)
+				log.Println("max ships", maxships, count)
 				tcpConn.Close()
 				continue
 			}
@@ -93,13 +85,8 @@ func setupSshConnection(node tree.Node, tcpConn net.Conn, ships Ships, id Id) {
 }
 
 func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
-	err := keepAlive(tcpConn)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	keepAlive(tcpConn)
 	dao := node.GetValue("dao").(Dao)
-	host := node.GetValue("hostname").(string)
 	export := node.GetValue("export").(string)
 	config := node.GetValue("config").(*ssh.ServerConfig)
 	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
@@ -122,26 +109,8 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println(port, ship, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
-	err = dao.AddEvent("open", host, ship, port)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-	err = dao.SetShip(host, ship, port)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-	defer func() {
-		err := dao.ClearShip(host, port)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		err = dao.AddEvent("close", host, ship, port)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}()
+	dao.AddShip(node.Name(), ship, port)
+	defer dao.DelShip(node.Name(), ship, port)
 	node.AddProcess("ssh chans reject", func() {
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")
@@ -195,14 +164,10 @@ func setupProxyConnection(node tree.Node, proxyConn net.Conn, id Id) {
 }
 
 func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
+	keepAlive(proxyConn)
 	port := node.GetValue("proxy").(int)
 	sshConn := node.GetValue("ssh").(*ssh.ServerConn)
-	err := keepAlive(proxyConn)
-	if err != nil {
-		log.Println(port, err)
-		return
-	}
-	err = proxyConn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	err := proxyConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	if err != nil {
 		log.Println(port, err)
 		return

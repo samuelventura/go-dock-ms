@@ -3,7 +3,7 @@
 #curl -X POST http://127.0.0.1:31600/api/daemon/stop/dock
 #curl -X POST http://127.0.0.1:31600/api/daemon/disable/dock
 #curl -X POST http://127.0.0.1:31600/api/daemon/uninstall/dock
-# curl -X POST http://127.0.0.1:31600/api/daemon/env/$DAEMON \
+# curl -X POST http://127.0.0.1:31600/api/daemon/env/dock \
 #     -H "DaemonEnviron: DOCK_HOSTKEY=$HOME/.ssh/id_rsa"
 if [[ "$OSTYPE" == "linux"* ]]; then
     DAEMON=dock

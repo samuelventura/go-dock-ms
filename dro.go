@@ -3,22 +3,21 @@ package main
 import "time"
 
 type KeyDro struct {
-	Host string `gorm:"primaryKey"`
 	Name string `gorm:"primaryKey"`
-	Key  string `gorm:"index"`
+	Key  string
 }
 
 type ShipDro struct {
-	Host string `gorm:"primaryKey"`
-	Port int    `gorm:"primaryKey"`
+	Sid  string `gorm:"primaryKey"`
+	Port int
 	Ship string `gorm:"index"`
 	When time.Time
 }
 
 type LogDro struct {
+	Sid   string
 	Event string
 	Port  int
-	Host  string
 	Ship  string
 	When  time.Time
 }

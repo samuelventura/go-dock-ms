@@ -18,15 +18,13 @@ type daoDso struct {
 
 type Dao interface {
 	Close() error
-	ClearShips(host string)
-	GetKeys(host string) (*[]KeyDro, error)
-	AddKey(host, name, key string) error
-	GetKey(host, name string) (*KeyDro, error)
-	DelKey(host, name string) error
-	CountShips(host string) (int64, error)
-	ClearShip(host string, port int) error
-	SetShip(host, ship string, port int) error
-	AddEvent(event, host, ship string, port int) error
+	ClearShips()
+	GetKeys() *[]KeyDro
+	AddKey(name, key string) error
+	GetKey(name string) (*KeyDro, error)
+	DelKey(name string) error
+	AddShip(sid, ship string, port int)
+	DelShip(sid, ship string, port int)
 }
 
 func dialector(node tree.Node) gorm.Dialector {
@@ -69,41 +67,40 @@ func (dso *daoDso) Close() error {
 	return nil
 }
 
-func (dso *daoDso) ClearShips(host string) {
+func (dso *daoDso) ClearShips() {
 	dro := &ShipDro{}
-	result := dso.db.
-		Where("host = ?", host).
-		Delete(dro)
+	result := dso.db.Delete(dro, "true")
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
 }
 
-func (dso *daoDso) GetKeys(host string) (*[]KeyDro, error) {
-	var dros []KeyDro
-	result := dso.db.Where("host = ?", host).Find(&dros)
-	return &dros, result.Error
+func (dso *daoDso) GetKeys() *[]KeyDro {
+	dros := []KeyDro{}
+	result := dso.db.Find(&dros)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return &dros
 }
 
-func (dso *daoDso) AddKey(host, name, key string) error {
-	dro := &KeyDro{Host: host, Name: name, Key: key}
+func (dso *daoDso) AddKey(name, key string) error {
+	dro := &KeyDro{Name: name, Key: key}
 	result := dso.db.Create(dro)
 	return result.Error
 }
 
-func (dso *daoDso) GetKey(host, name string) (*KeyDro, error) {
+func (dso *daoDso) GetKey(name string) (*KeyDro, error) {
 	dro := &KeyDro{}
 	result := dso.db.
-		Where("host = ?", host).
 		Where("name = ?", name).
 		First(dro)
 	return dro, result.Error
 }
 
-func (dso *daoDso) DelKey(host, name string) error {
+func (dso *daoDso) DelKey(name string) error {
 	dro := &KeyDro{}
 	result := dso.db.
-		Where("host = ?", host).
 		Where("name = ?", name).
 		Delete(dro)
 	if result.Error == nil && result.RowsAffected != 1 {
@@ -112,39 +109,42 @@ func (dso *daoDso) DelKey(host, name string) error {
 	return result.Error
 }
 
-func (dso *daoDso) CountShips(host string) (int64, error) {
-	var count int64
+func (dso *daoDso) AddShip(sid, ship string, port int) {
+	err := dso.addEvent(sid, "add", ship, port)
+	if err != nil {
+		log.Fatal(err)
+	}
 	dro := &ShipDro{}
-	result := dso.db.Model(dro).
-		Where("host = ?", host).
-		Count(&count)
-	return count, result.Error
-}
-
-func (dso *daoDso) SetShip(host, ship string, port int) error {
-	dro := &ShipDro{}
+	dro.Sid = sid
 	dro.When = time.Now()
-	dro.Host = host
 	dro.Ship = ship
 	dro.Port = port
 	result := dso.db.Create(dro)
-	return result.Error
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
 }
 
-func (dso *daoDso) ClearShip(host string, port int) error {
+func (dso *daoDso) DelShip(sid, ship string, port int) {
+	err := dso.addEvent(sid, "del", ship, port)
+	if err != nil {
+		log.Fatal(err)
+	}
 	dro := &ShipDro{}
-	result := dso.db.
-		Where("host = ?", host).
-		Where("port = ?", port).
-		Delete(dro)
-	return result.Error
+	result := dso.db.Where("sid", sid).Delete(dro)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	if result.RowsAffected != 1 {
+		log.Fatal("row not found")
+	}
 }
 
-func (dso *daoDso) AddEvent(event, host, ship string, port int) error {
+func (dso *daoDso) addEvent(sid, event, ship string, port int) error {
 	dro := &LogDro{}
+	dro.Sid = sid
 	dro.Event = event
 	dro.When = time.Now()
-	dro.Host = host
 	dro.Ship = ship
 	dro.Port = port
 	result := dso.db.Create(dro)

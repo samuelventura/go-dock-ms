@@ -35,8 +35,6 @@ func main() {
 	anode := rnode.AddChild("api")
 	defer anode.WaitDisposed()
 	defer anode.Close()
-	host := hostname()
-	anode.SetValue("hostname", getenv("DOCK_HOSTNAME", host))
 	anode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
 	anode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
 	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31622"))
@@ -47,7 +45,7 @@ func main() {
 	dao := NewDao(anode) //close on root
 	rnode.AddCloser("dao", dao.Close)
 	anode.SetValue("dao", dao)
-	dao.ClearShips(host)
+	dao.ClearShips()
 	sshd(anode)
 
 	stdin := make(chan interface{})
