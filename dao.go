@@ -23,8 +23,8 @@ type Dao interface {
 	AddKey(name, key string) error
 	GetKey(name string) (*KeyDro, error)
 	DelKey(name string) error
-	AddShip(sid, ship string, port int)
-	DelShip(sid, ship string, port int)
+	AddShip(sid, ship, key string, port int)
+	DelShip(sid, ship, key string, port int)
 }
 
 func dialector(node tree.Node) gorm.Dialector {
@@ -77,7 +77,7 @@ func (dso *daoDso) ClearShips() {
 
 func (dso *daoDso) GetKeys() *[]KeyDro {
 	dros := []KeyDro{}
-	result := dso.db.Find(&dros)
+	result := dso.db.Where("enabled", true).Find(&dros)
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
@@ -109,8 +109,8 @@ func (dso *daoDso) DelKey(name string) error {
 	return result.Error
 }
 
-func (dso *daoDso) AddShip(sid, ship string, port int) {
-	err := dso.addEvent(sid, "add", ship, port)
+func (dso *daoDso) AddShip(sid, ship, key string, port int) {
+	err := dso.addEvent(sid, "add", ship, key, port)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,8 +125,8 @@ func (dso *daoDso) AddShip(sid, ship string, port int) {
 	}
 }
 
-func (dso *daoDso) DelShip(sid, ship string, port int) {
-	err := dso.addEvent(sid, "del", ship, port)
+func (dso *daoDso) DelShip(sid, ship, key string, port int) {
+	err := dso.addEvent(sid, "del", ship, key, port)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,12 +140,13 @@ func (dso *daoDso) DelShip(sid, ship string, port int) {
 	}
 }
 
-func (dso *daoDso) addEvent(sid, event, ship string, port int) error {
+func (dso *daoDso) addEvent(sid, event, ship, key string, port int) error {
 	dro := &LogDro{}
 	dro.Sid = sid
 	dro.Event = event
 	dro.When = time.Now()
 	dro.Ship = ship
+	dro.Key = key
 	dro.Port = port
 	result := dso.db.Create(dro)
 	return result.Error

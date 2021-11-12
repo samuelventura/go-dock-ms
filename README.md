@@ -20,8 +20,8 @@ Next Steps
 #run locally
 ln -sf ~/github/go-dock-ms/id_rsa.key ~/go/bin/go-dock-ms.key
 sqlite3 ~/go/bin/go-dock-ms.db3 "delete from key_dros"
-sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (name, key) values ('default', readfile('./id_rsa.pub'))"
-sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (name, key) values ('user', readfile('$HOME/.ssh/id_rsa.pub'))"
+sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (enabled, name, key) values (true, 'default', readfile('./id_rsa.pub'))"
+sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (enabled, name, key) values (true, 'user', readfile('$HOME/.ssh/id_rsa.pub'))"
 sqlite3 ~/go/bin/go-dock-ms.db3 "select * from key_dros"
 go install && ~/go/bin/go-dock-ms
 #kill and dump stacktrace to test keepalive timeout

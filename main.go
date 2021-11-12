@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/samuelventura/go-state"
 	"github.com/samuelventura/go-tree"
@@ -45,6 +46,9 @@ func main() {
 	dao := NewDao(anode) //close on root
 	rnode.AddCloser("dao", dao.Close)
 	anode.SetValue("dao", dao)
+	for _, key := range *dao.GetKeys() {
+		log.Println("key", key.Name, strings.TrimSpace(key.Key))
+	}
 	dao.ClearShips()
 	sshd(anode)
 

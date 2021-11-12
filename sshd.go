@@ -29,15 +29,14 @@ func sshd(node tree.Node) {
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 			inkey := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
-			dros := dao.GetKeys()
-			for _, dro := range *dros {
-				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(dro.Key))
+			for _, key := range *dao.GetKeys() {
+				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.Key))
 				if err != nil {
-					log.Fatalln("Ignoring invalid key", dro.Name)
+					log.Fatalln("Ignoring invalid key", key.Name)
 				}
 				pubtxt := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pubkey)))
 				if pubtxt == inkey {
-					return &ssh.Permissions{Extensions: map[string]string{"key-id": dro.Name}}, nil
+					return &ssh.Permissions{Extensions: map[string]string{"key-id": key.Name}}, nil
 				}
 			}
 			return nil, fmt.Errorf("key not found")
@@ -109,8 +108,9 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println(port, ship, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
-	dao.AddShip(node.Name(), ship, port)
-	defer dao.DelShip(node.Name(), ship, port)
+	key := sshConn.Permissions.Extensions["key-id"]
+	dao.AddShip(node.Name(), ship, key, port)
+	defer dao.DelShip(node.Name(), ship, key, port)
 	node.AddProcess("ssh chans reject", func() {
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")
