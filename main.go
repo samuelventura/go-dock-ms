@@ -26,6 +26,15 @@ func main() {
 	defer rnode.WaitDisposed()
 	//recover closes as well
 	defer rnode.Recover()
+	rnode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
+	rnode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
+	dao := NewDao(rnode) //close on root
+	rnode.AddCloser("dao", dao.Close)
+	rnode.SetValue("dao", dao)
+	for _, key := range dao.EnabledKeys() {
+		log.Println("key", key.Name, strings.TrimSpace(key.Key))
+	}
+	dao.ClearShips()
 
 	spath := state.SingletonPath()
 	snode := state.Serve(rnode, spath)
@@ -33,24 +42,20 @@ func main() {
 	defer snode.Close()
 	log.Println("socket", spath)
 
+	enode := rnode.AddChild("ssh")
+	defer enode.WaitDisposed()
+	defer enode.Close()
+	enode.SetValue("endpoint", getenv("DOCK_ENDPOINT_SSH", "0.0.0.0:31622"))
+	enode.SetValue("hostkey", getenv("DOCK_HOSTKEY", withext("key")))
+	enode.SetValue("maxships", getenvi("DOCK_MAXSHIPS", "1000"))
+	enode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
+	sshd(enode)
+
 	anode := rnode.AddChild("api")
 	defer anode.WaitDisposed()
 	defer anode.Close()
-	anode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
-	anode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
-	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT", "0.0.0.0:31622"))
-	anode.SetValue("maxships", getenvi("DOCK_MAXSHIPS", "1000"))
-	anode.SetValue("hostkey", getenv("DOCK_HOSTKEY", withext("key")))
-	anode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
-
-	dao := NewDao(anode) //close on root
-	rnode.AddCloser("dao", dao.Close)
-	anode.SetValue("dao", dao)
-	for _, key := range *dao.GetKeys() {
-		log.Println("key", key.Name, strings.TrimSpace(key.Key))
-	}
-	dao.ClearShips()
-	sshd(anode)
+	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT_API", "0.0.0.0:31623"))
+	api(anode)
 
 	stdin := make(chan interface{})
 	go func() {

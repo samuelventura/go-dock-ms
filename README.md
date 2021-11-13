@@ -14,6 +14,39 @@ Next Steps
 - Key handling RESTish API
 - Ship state RESTish API
 
+## API
+
+```bash
+#key management
+curl -X GET http://127.0.0.1:31623/api/key/list
+curl -X GET http://127.0.0.1:31623/api/key/info/:name
+curl -X POST http://127.0.0.1:31623/api/key/delete/:name
+curl -X POST http://127.0.0.1:31623/api/key/enable/:name
+curl -X POST http://127.0.0.1:31623/api/key/disable/:name
+curl -X POST http://127.0.0.1:31623/api/key/add/:name -F "file=@filepath"
+#ship management
+curl -X GET http://127.0.0.1:31623/api/ship/list
+curl -X GET http://127.0.0.1:31623/api/ship/info/:name
+curl -X POST http://127.0.0.1:31623/api/ship/remove/:name
+curl -X POST http://127.0.0.1:31623/api/ship/enable/:name
+curl -X POST http://127.0.0.1:31623/api/ship/disable/:name
+curl -X POST http://127.0.0.1:31623/api/ship/add/:name
+curl -X POST http://127.0.0.1:31623/api/ship/port/:name/:port
+curl -X POST http://127.0.0.1:31623/api/ship/stop/:name
+curl -X GET http://127.0.0.1:31623/api/ship/status/:name
+```
+
+## Test Drive
+
+```bash
+curl -X GET http://127.0.0.1:31623/api/key/list
+curl -X GET http://127.0.0.1:31623/api/key/info/default
+curl -X POST http://127.0.0.1:31623/api/key/delete/default
+curl -X POST http://127.0.0.1:31623/api/key/enable/default
+curl -X POST http://127.0.0.1:31623/api/key/disable/default
+curl -X POST http://127.0.0.1:31623/api/key/add/default -F "file=@id_rsa.pub"
+```
+
 ## Development
 
 ```bash

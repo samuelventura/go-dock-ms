@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/samuelventura/go-tree"
@@ -13,16 +14,19 @@ import (
 )
 
 type daoDso struct {
-	db *gorm.DB
+	mutex *sync.Mutex
+	db    *gorm.DB
 }
 
 type Dao interface {
 	Close() error
 	ClearShips()
-	GetKeys() *[]KeyDro
-	AddKey(name, key string) error
+	ListKeys() []*KeyDro
+	EnabledKeys() []*KeyDro
 	GetKey(name string) (*KeyDro, error)
+	AddKey(name, key string) error
 	DelKey(name string) error
+	EnableKey(name string, enabled bool) error
 	AddShip(sid, ship, key string, port int)
 	DelShip(sid, ship, key string, port int)
 }
@@ -48,14 +52,16 @@ func NewDao(node tree.Node) Dao {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = db.AutoMigrate(&KeyDro{}, &ShipDro{}, &LogDro{})
+	err = db.AutoMigrate(&KeyDro{}, &StateDro{}, &LogDro{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &daoDso{db}
+	return &daoDso{&sync.Mutex{}, db}
 }
 
 func (dso *daoDso) Close() error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
 	sqlDB, err := dso.db.DB()
 	if err != nil {
 		return err
@@ -68,29 +74,40 @@ func (dso *daoDso) Close() error {
 }
 
 func (dso *daoDso) ClearShips() {
-	dro := &ShipDro{}
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dro := &StateDro{}
 	result := dso.db.Delete(dro, "true")
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
 }
 
-func (dso *daoDso) GetKeys() *[]KeyDro {
-	dros := []KeyDro{}
+func (dso *daoDso) EnabledKeys() []*KeyDro {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dros := []*KeyDro{}
 	result := dso.db.Where("enabled", true).Find(&dros)
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
-	return &dros
+	return dros
 }
 
-func (dso *daoDso) AddKey(name, key string) error {
-	dro := &KeyDro{Name: name, Key: key}
-	result := dso.db.Create(dro)
-	return result.Error
+func (dso *daoDso) ListKeys() []*KeyDro {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dros := []*KeyDro{}
+	result := dso.db.Where("true").Find(&dros)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return dros
 }
 
 func (dso *daoDso) GetKey(name string) (*KeyDro, error) {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
 	dro := &KeyDro{}
 	result := dso.db.
 		Where("name = ?", name).
@@ -98,23 +115,46 @@ func (dso *daoDso) GetKey(name string) (*KeyDro, error) {
 	return dro, result.Error
 }
 
+func (dso *daoDso) AddKey(name, key string) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dro := &KeyDro{Name: name, Key: key}
+	result := dso.db.Create(dro)
+	return result.Error
+}
+
 func (dso *daoDso) DelKey(name string) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
 	dro := &KeyDro{}
 	result := dso.db.
 		Where("name = ?", name).
 		Delete(dro)
 	if result.Error == nil && result.RowsAffected != 1 {
-		return fmt.Errorf("row not found")
+		return fmt.Errorf("key not found")
+	}
+	return result.Error
+}
+
+func (dso *daoDso) EnableKey(name string, enabled bool) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	result := dso.db.Model(&KeyDro{}).
+		Where("name = ?", name).Update("Enabled", enabled)
+	if result.Error == nil && result.RowsAffected != 1 {
+		return fmt.Errorf("key not found")
 	}
 	return result.Error
 }
 
 func (dso *daoDso) AddShip(sid, ship, key string, port int) {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "add", ship, key, port)
 	if err != nil {
 		log.Fatal(err)
 	}
-	dro := &ShipDro{}
+	dro := &StateDro{}
 	dro.Sid = sid
 	dro.When = time.Now()
 	dro.Ship = ship
@@ -126,11 +166,13 @@ func (dso *daoDso) AddShip(sid, ship, key string, port int) {
 }
 
 func (dso *daoDso) DelShip(sid, ship, key string, port int) {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "del", ship, key, port)
 	if err != nil {
 		log.Fatal(err)
 	}
-	dro := &ShipDro{}
+	dro := &StateDro{}
 	result := dso.db.Where("sid", sid).Delete(dro)
 	if result.Error != nil {
 		log.Fatal(result.Error)

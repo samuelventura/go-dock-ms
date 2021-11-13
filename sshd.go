@@ -29,7 +29,7 @@ func sshd(node tree.Node) {
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 			inkey := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
-			for _, key := range *dao.GetKeys() {
+			for _, key := range dao.EnabledKeys() {
 				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.Key))
 				if err != nil {
 					log.Fatalln("Ignoring invalid key", key.Name)
@@ -50,7 +50,7 @@ func sshd(node tree.Node) {
 	}
 	node.AddCloser("listen", listen.Close)
 	port := listen.Addr().(*net.TCPAddr).Port
-	log.Println("port", port)
+	log.Println("port ssh", port)
 	node.SetValue("port", port)
 	ships := NewShips()
 	node.AddProcess("listen", func() {

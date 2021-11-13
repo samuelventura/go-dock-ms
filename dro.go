@@ -9,6 +9,12 @@ type KeyDro struct {
 }
 
 type ShipDro struct {
+	Name    string `gorm:"primaryKey"`
+	Port    int
+	Enabled bool
+}
+
+type StateDro struct {
 	Sid  string `gorm:"primaryKey"`
 	Port int
 	Ship string `gorm:"index"`
