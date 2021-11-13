@@ -67,6 +67,7 @@ func main() {
 	select {
 	case <-rnode.Closed():
 	case <-snode.Closed():
+	case <-enode.Closed():
 	case <-anode.Closed():
 	case <-ctrlc:
 	case <-stdin:
