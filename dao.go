@@ -26,8 +26,8 @@ type Dao interface {
 	AddKey(name, key string) error
 	DelKey(name string) error
 	EnableKey(name string, enabled bool) error
-	ShipStart(sid, ship, key string, port int)
-	ShipStop(sid, ship, key string, port int)
+	ShipStart(sid, ship, key, host, ip string, port int)
+	ShipStop(sid, ship, key, host, ip string, port int)
 	ClearShips()
 	CountShips() int64
 	CountEnabledShips() int64
@@ -227,10 +227,10 @@ func (dso *daoDso) EnableKey(name string, enabled bool) error {
 	return result.Error
 }
 
-func (dso *daoDso) ShipStart(sid, ship, key string, port int) {
+func (dso *daoDso) ShipStart(sid, ship, key, host, ip string, port int) {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
-	err := dso.addEvent(sid, "add", ship, key, port)
+	err := dso.addEvent(sid, "add", ship, key, host, ip, port)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -239,16 +239,18 @@ func (dso *daoDso) ShipStart(sid, ship, key string, port int) {
 	dro.When = time.Now()
 	dro.Ship = ship
 	dro.Port = port
+	dro.Host = host
+	dro.IP = ip
 	result := dso.db.Create(dro)
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
 }
 
-func (dso *daoDso) ShipStop(sid, ship, key string, port int) {
+func (dso *daoDso) ShipStop(sid, ship, key, host, ip string, port int) {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
-	err := dso.addEvent(sid, "del", ship, key, port)
+	err := dso.addEvent(sid, "del", ship, key, host, ip, port)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -262,7 +264,7 @@ func (dso *daoDso) ShipStop(sid, ship, key string, port int) {
 	}
 }
 
-func (dso *daoDso) addEvent(sid, event, ship, key string, port int) error {
+func (dso *daoDso) addEvent(sid, event, ship, key, host, ip string, port int) error {
 	dro := &LogDro{}
 	dro.Sid = sid
 	dro.Event = event
@@ -270,6 +272,8 @@ func (dso *daoDso) addEvent(sid, event, ship, key string, port int) error {
 	dro.Ship = ship
 	dro.Key = key
 	dro.Port = port
+	dro.Host = host
+	dro.IP = ip
 	result := dso.db.Create(dro)
 	return result.Error
 }

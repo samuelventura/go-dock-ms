@@ -87,6 +87,7 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	keepAlive(tcpConn)
 	dao := node.GetValue("dao").(Dao)
 	export := node.GetValue("export").(string)
+	hostname := node.GetValue("hostname").(string)
 	config := node.GetValue("config").(*ssh.ServerConfig)
 	sshConn, chans, reqs, err := ssh.NewServerConn(tcpConn, config)
 	if err != nil {
@@ -116,8 +117,8 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	log.Println(ship, port, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
 	key := sshConn.Permissions.Extensions["key-id"]
-	dao.ShipStart(node.Name(), ship, key, port)
-	defer dao.ShipStop(node.Name(), ship, key, port)
+	dao.ShipStart(node.Name(), ship, key, hostname, export, port)
+	defer dao.ShipStop(node.Name(), ship, key, hostname, export, port)
 	node.AddProcess("ssh chans reject", func() {
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")

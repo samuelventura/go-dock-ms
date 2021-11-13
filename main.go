@@ -26,6 +26,7 @@ func main() {
 	defer rnode.WaitDisposed()
 	//recover closes as well
 	defer rnode.Recover()
+	rnode.SetValue("hostname", hostname())
 	rnode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
 	rnode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
 	dao := NewDao(rnode) //close on root

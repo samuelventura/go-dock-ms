@@ -19,6 +19,8 @@ type StateDro struct {
 	Port int
 	Ship string `gorm:"index"`
 	When time.Time
+	Host string
+	IP   string
 }
 
 type LogDro struct {
@@ -28,4 +30,6 @@ type LogDro struct {
 	Ship  string
 	Key   string
 	When  time.Time
+	Host  string
+	IP    string
 }
