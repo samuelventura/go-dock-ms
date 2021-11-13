@@ -15,6 +15,7 @@ import (
 
 func sshd(node tree.Node) {
 	dao := node.GetValue("dao").(Dao)
+	ships := node.GetValue("ships").(Ships)
 	endpoint := node.GetValue("endpoint").(string)
 	hostkey := node.GetValue("hostkey").(string)
 	maxships := node.GetValue("maxships").(int64)
@@ -52,7 +53,6 @@ func sshd(node tree.Node) {
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port ssh", port)
 	node.SetValue("port", port)
-	ships := NewShips()
 	node.AddProcess("listen", func() {
 		id := NewId("ssh-" + listen.Addr().String())
 		for {
@@ -93,24 +93,31 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 		log.Println(err)
 		return
 	}
+	ship := sshConn.User()
+	dro, err := dao.GetShip(ship)
+	if err != nil || !dro.Enabled {
+		log.Println(ship, dro.Enabled, err)
+		return
+	}
 	node.AddCloser("sshConn", sshConn.Close)
 	node.SetValue("ssh", sshConn)
-	listen, err := net.Listen("tcp", fmt.Sprintf("%s:0", export))
+	endpoint := fmt.Sprintf("%s:%d", export, dro.Port)
+	listen, err := net.Listen("tcp", endpoint)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	node.AddCloser("listen", listen.Close)
-	ship := sshConn.User()
-	//replace ship by name
+	port := listen.Addr().(*net.TCPAddr).Port
+	node.SetValue("sport", port)
+	//replace ship by name, ensure sport already defined
 	ships.Add(ship, node)
 	defer ships.Del(ship, node)
-	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println(port, ship, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
 	key := sshConn.Permissions.Extensions["key-id"]
-	dao.AddShip(node.Name(), ship, key, port)
-	defer dao.DelShip(node.Name(), ship, key, port)
+	dao.ShipStart(node.Name(), ship, key, port)
+	defer dao.ShipStop(node.Name(), ship, key, port)
 	node.AddProcess("ssh chans reject", func() {
 		for nch := range chans {
 			nch.Reject(ssh.Prohibited, "unsupported")

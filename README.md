@@ -25,13 +25,13 @@ curl -X POST http://127.0.0.1:31623/api/key/enable/:name
 curl -X POST http://127.0.0.1:31623/api/key/disable/:name
 curl -X POST http://127.0.0.1:31623/api/key/add/:name -F "file=@filepath"
 #ship management
-curl -X GET http://127.0.0.1:31623/api/ship/list
+curl -X GET http://127.0.0.1:31623/api/ship/count
 curl -X GET http://127.0.0.1:31623/api/ship/info/:name
+curl -X POST http://127.0.0.1:31623/api/ship/add/:name
+curl -X POST http://127.0.0.1:31623/api/ship/port/:name/:port
 curl -X POST http://127.0.0.1:31623/api/ship/remove/:name
 curl -X POST http://127.0.0.1:31623/api/ship/enable/:name
 curl -X POST http://127.0.0.1:31623/api/ship/disable/:name
-curl -X POST http://127.0.0.1:31623/api/ship/add/:name
-curl -X POST http://127.0.0.1:31623/api/ship/port/:name/:port
 curl -X POST http://127.0.0.1:31623/api/ship/stop/:name
 curl -X GET http://127.0.0.1:31623/api/ship/status/:name
 ```
@@ -45,6 +45,16 @@ curl -X POST http://127.0.0.1:31623/api/key/delete/default
 curl -X POST http://127.0.0.1:31623/api/key/enable/default
 curl -X POST http://127.0.0.1:31623/api/key/disable/default
 curl -X POST http://127.0.0.1:31623/api/key/add/default -F "file=@id_rsa.pub"
+curl -X GET http://127.0.0.1:31623/api/ship/count
+curl -X GET http://127.0.0.1:31623/api/ship/count/enabled
+curl -X GET http://127.0.0.1:31623/api/ship/count/disabled
+curl -X GET http://127.0.0.1:31623/api/ship/info/sample
+curl -X GET http://127.0.0.1:31623/api/ship/status/sample
+curl -X POST http://127.0.0.1:31623/api/ship/add/sample
+curl -X POST http://127.0.0.1:31623/api/ship/port/sample/4000
+curl -X POST http://127.0.0.1:31623/api/ship/enable/sample
+curl -X POST http://127.0.0.1:31623/api/ship/disable/sample
+curl -X POST http://127.0.0.1:31623/api/ship/close/sample
 ```
 
 ## Development

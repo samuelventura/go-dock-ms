@@ -35,6 +35,7 @@ func main() {
 		log.Println("key", key.Name, strings.TrimSpace(key.Key))
 	}
 	dao.ClearShips()
+	rnode.SetValue("ships", NewShips())
 
 	spath := state.SingletonPath()
 	snode := state.Serve(rnode, spath)

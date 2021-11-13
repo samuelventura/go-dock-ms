@@ -20,15 +20,22 @@ type daoDso struct {
 
 type Dao interface {
 	Close() error
-	ClearShips()
 	ListKeys() []*KeyDro
 	EnabledKeys() []*KeyDro
 	GetKey(name string) (*KeyDro, error)
 	AddKey(name, key string) error
 	DelKey(name string) error
 	EnableKey(name string, enabled bool) error
-	AddShip(sid, ship, key string, port int)
-	DelShip(sid, ship, key string, port int)
+	ShipStart(sid, ship, key string, port int)
+	ShipStop(sid, ship, key string, port int)
+	ClearShips()
+	CountShips() int64
+	CountEnabledShips() int64
+	CountDisabledShips() int64
+	AddShip(name string) error
+	GetShip(name string) (*ShipDro, error)
+	EnableShip(name string, enabled bool) error
+	PortShip(name string, port int) error
 }
 
 func dialector(node tree.Node) gorm.Dialector {
@@ -52,7 +59,7 @@ func NewDao(node tree.Node) Dao {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = db.AutoMigrate(&KeyDro{}, &StateDro{}, &LogDro{})
+	err = db.AutoMigrate(&KeyDro{}, &ShipDro{}, &StateDro{}, &LogDro{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,6 +88,79 @@ func (dso *daoDso) ClearShips() {
 	if result.Error != nil {
 		log.Fatal(result.Error)
 	}
+}
+
+func (dso *daoDso) CountShips() int64 {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	count := int64(0)
+	result := dso.db.Model(&ShipDro{}).Count(&count)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return count
+}
+
+func (dso *daoDso) CountEnabledShips() int64 {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	count := int64(0)
+	result := dso.db.Model(&ShipDro{}).Where("enabled = ?", true).Count(&count)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return count
+}
+
+func (dso *daoDso) CountDisabledShips() int64 {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	count := int64(0)
+	result := dso.db.Model(&ShipDro{}).Where("enabled != ?", true).Count(&count)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return count
+}
+
+func (dso *daoDso) AddShip(name string) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dro := &ShipDro{Name: name}
+	result := dso.db.Create(dro)
+	return result.Error
+}
+
+func (dso *daoDso) GetShip(name string) (*ShipDro, error) {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dro := &ShipDro{}
+	result := dso.db.
+		Where("name = ?", name).
+		First(dro)
+	return dro, result.Error
+}
+
+func (dso *daoDso) EnableShip(name string, enabled bool) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	result := dso.db.Model(&ShipDro{}).
+		Where("name = ?", name).Update("enabled", enabled)
+	if result.Error == nil && result.RowsAffected != 1 {
+		return fmt.Errorf("ship not found")
+	}
+	return result.Error
+}
+
+func (dso *daoDso) PortShip(name string, port int) error {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	result := dso.db.Model(&ShipDro{}).
+		Where("name = ?", name).Update("port", port)
+	if result.Error == nil && result.RowsAffected != 1 {
+		return fmt.Errorf("ship not found")
+	}
+	return result.Error
 }
 
 func (dso *daoDso) EnabledKeys() []*KeyDro {
@@ -140,14 +220,14 @@ func (dso *daoDso) EnableKey(name string, enabled bool) error {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
 	result := dso.db.Model(&KeyDro{}).
-		Where("name = ?", name).Update("Enabled", enabled)
+		Where("name = ?", name).Update("enabled", enabled)
 	if result.Error == nil && result.RowsAffected != 1 {
 		return fmt.Errorf("key not found")
 	}
 	return result.Error
 }
 
-func (dso *daoDso) AddShip(sid, ship, key string, port int) {
+func (dso *daoDso) ShipStart(sid, ship, key string, port int) {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "add", ship, key, port)
@@ -165,7 +245,7 @@ func (dso *daoDso) AddShip(sid, ship, key string, port int) {
 	}
 }
 
-func (dso *daoDso) DelShip(sid, ship, key string, port int) {
+func (dso *daoDso) ShipStop(sid, ship, key string, port int) {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "del", ship, key, port)

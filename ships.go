@@ -12,6 +12,7 @@ type shipsDso struct {
 }
 
 type Ships interface {
+	Get(name string) tree.Node
 	Del(name string, node tree.Node)
 	Add(name string, node tree.Node)
 	Count() int
@@ -22,6 +23,12 @@ func NewShips() Ships {
 	dso.mutex = &sync.Mutex{}
 	dso.ships = make(map[string]tree.Node)
 	return dso
+}
+
+func (dso *shipsDso) Get(name string) tree.Node {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	return dso.ships[name]
 }
 
 func (dso *shipsDso) Add(name string, node tree.Node) {
