@@ -113,7 +113,7 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 	//replace ship by name, ensure sport already defined
 	ships.Add(ship, node)
 	defer ships.Del(ship, node)
-	log.Println(port, ship, tcpConn.RemoteAddr(), ships.Count())
+	log.Println(ship, port, tcpConn.RemoteAddr(), ships.Count())
 	node.SetValue("proxy", port)
 	key := sshConn.Permissions.Extensions["key-id"]
 	dao.ShipStart(node.Name(), ship, key, port)

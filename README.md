@@ -67,6 +67,7 @@ sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (enabled, name, key) value
 sqlite3 ~/go/bin/go-dock-ms.db3 "insert into key_dros (enabled, name, key) values (true, 'user', readfile('$HOME/.ssh/id_rsa.pub'))"
 sqlite3 ~/go/bin/go-dock-ms.db3 "select * from key_dros"
 go install && ~/go/bin/go-dock-ms
+tail /usr/local/bin/go-dock-ms.out.log -n 10
 #kill and dump stacktrace to test keepalive timeout
 killall go-dock-to
 ps -A | grep go-
