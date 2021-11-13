@@ -114,10 +114,17 @@ func api(node tree.Node) {
 		name := c.Param("name")
 		node := ships.Get(name)
 		port := -1
+		ip := ""
+		id := ""
+		hostname := ""
 		if node != nil {
-			port = node.GetValue("sport").(int)
+			port = node.GetValue("proxy").(int)
+			id = node.GetValue("id").(string)
+			ip = node.GetValue("export").(string)
+			hostname = node.GetValue("hostname").(string)
 		}
-		c.JSON(200, port)
+		c.JSON(200, gin.H{"ip": ip, "port": port,
+			"host": hostname, "id": id, "name": name})
 	})
 	skapi.POST("/close/:name", func(c *gin.Context) {
 		name := c.Param("name")

@@ -109,14 +109,16 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 		return
 	}
 	node.AddCloser("listen", listen.Close)
+	id := NewId("proxy-" + listen.Addr().String())
 	port := listen.Addr().(*net.TCPAddr).Port
-	node.SetValue("sport", port)
+	key := sshConn.Permissions.Extensions["key-id"]
+	node.SetValue("proxy", port)
+	node.SetValue("key", key)
+	node.SetValue("id", id)
 	//replace ship by name, ensure sport already defined
 	ships.Add(ship, node)
 	defer ships.Del(ship, node)
 	log.Println(ship, port, tcpConn.RemoteAddr(), ships.Count())
-	node.SetValue("proxy", port)
-	key := sshConn.Permissions.Extensions["key-id"]
 	dao.ShipStart(node.Name(), ship, key, hostname, export, port)
 	defer dao.ShipStop(node.Name(), ship, key, hostname, export, port)
 	node.AddProcess("ssh chans reject", func() {
@@ -149,7 +151,6 @@ func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
 			}
 		}
 	})
-	id := NewId("proxy-" + listen.Addr().String())
 	for {
 		proxyConn, err := listen.Accept()
 		if err != nil {

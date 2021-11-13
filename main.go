@@ -56,7 +56,7 @@ func main() {
 	anode := rnode.AddChild("api")
 	defer anode.WaitDisposed()
 	defer anode.Close()
-	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT_API", "0.0.0.0:31623"))
+	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT_API", "127.0.0.1:31623"))
 	api(anode)
 
 	stdin := make(chan interface{})
