@@ -34,6 +34,7 @@ curl -X POST http://127.0.0.1:31623/api/ship/enable/:name
 curl -X POST http://127.0.0.1:31623/api/ship/disable/:name
 curl -X POST http://127.0.0.1:31623/api/ship/stop/:name
 curl -X GET http://127.0.0.1:31623/api/ship/status/:name
+curl -X GET http://127.0.0.1:31623/api/ship/state/:name
 ```
 
 ## Test Drive
@@ -50,6 +51,7 @@ curl -X GET http://127.0.0.1:31623/api/ship/count/enabled
 curl -X GET http://127.0.0.1:31623/api/ship/count/disabled
 curl -X GET http://127.0.0.1:31623/api/ship/info/sample
 curl -X GET http://127.0.0.1:31623/api/ship/status/sample
+curl -X GET http://127.0.0.1:31623/api/ship/state/sample
 curl -X POST http://127.0.0.1:31623/api/ship/add/sample
 curl -X POST http://127.0.0.1:31623/api/ship/port/sample/4000
 curl -X POST http://127.0.0.1:31623/api/ship/enable/sample

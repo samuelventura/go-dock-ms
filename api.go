@@ -109,6 +109,15 @@ func api(node tree.Node) {
 		}
 		c.JSON(200, row)
 	})
+	skapi.GET("/state/:name", func(c *gin.Context) {
+		name := c.Param("name")
+		row, err := dao.ShipState(name)
+		if err != nil {
+			c.JSON(400, fmt.Sprintf("err: %v", err))
+			return
+		}
+		c.JSON(200, row)
+	})
 	//ensure port is added to node before ship gets added to ships
 	skapi.GET("/status/:name", func(c *gin.Context) {
 		name := c.Param("name")

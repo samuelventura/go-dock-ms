@@ -54,7 +54,7 @@ func sshd(node tree.Node) {
 	log.Println("port ssh", port)
 	node.SetValue("port", port)
 	node.AddProcess("listen", func() {
-		id := NewId("ssh-" + listen.Addr().String())
+		id := NewId("ssh-" + hostname() + "-" + listen.Addr().String())
 		for {
 			tcpConn, err := listen.Accept()
 			if err != nil {

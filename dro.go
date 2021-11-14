@@ -18,7 +18,7 @@ type StateDro struct {
 	Sid  string `gorm:"primaryKey"`
 	Port int
 	Ship string `gorm:"index"`
-	When time.Time
+	Wts  time.Time
 	Host string
 	IP   string
 }
@@ -29,7 +29,7 @@ type LogDro struct {
 	Port  int
 	Ship  string
 	Key   string
-	When  time.Time
+	Wts   time.Time
 	Host  string
 	IP    string
 }

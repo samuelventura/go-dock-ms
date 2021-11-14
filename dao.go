@@ -28,6 +28,7 @@ type Dao interface {
 	EnableKey(name string, enabled bool) error
 	ShipStart(sid, ship, key, host, ip string, port int)
 	ShipStop(sid, ship, key, host, ip string, port int)
+	ShipState(ship string) (*StateDro, error)
 	ClearShips()
 	CountShips() int64
 	CountEnabledShips() int64
@@ -227,6 +228,17 @@ func (dso *daoDso) EnableKey(name string, enabled bool) error {
 	return result.Error
 }
 
+func (dso *daoDso) ShipState(ship string) (*StateDro, error) {
+	dso.mutex.Lock()
+	defer dso.mutex.Unlock()
+	dro := &StateDro{}
+	result := dso.db.
+		Where("ship = ?", ship).
+		Order("wts desc").
+		First(dro)
+	return dro, result.Error
+}
+
 func (dso *daoDso) ShipStart(sid, ship, key, host, ip string, port int) {
 	dso.mutex.Lock()
 	defer dso.mutex.Unlock()
@@ -236,7 +248,7 @@ func (dso *daoDso) ShipStart(sid, ship, key, host, ip string, port int) {
 	}
 	dro := &StateDro{}
 	dro.Sid = sid
-	dro.When = time.Now()
+	dro.Wts = time.Now()
 	dro.Ship = ship
 	dro.Port = port
 	dro.Host = host
@@ -268,7 +280,7 @@ func (dso *daoDso) addEvent(sid, event, ship, key, host, ip string, port int) er
 	dro := &LogDro{}
 	dro.Sid = sid
 	dro.Event = event
-	dro.When = time.Now()
+	dro.Wts = time.Now()
 	dro.Ship = ship
 	dro.Key = key
 	dro.Port = port
