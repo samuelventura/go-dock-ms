@@ -26,6 +26,8 @@ curl -X POST http://127.0.0.1:31623/api/key/disable/:name
 curl -X POST http://127.0.0.1:31623/api/key/add/:name -F "file=@filepath"
 #ship management
 curl -X GET http://127.0.0.1:31623/api/ship/count
+curl -X GET http://127.0.0.1:31623/api/ship/count/enabled
+curl -X GET http://127.0.0.1:31623/api/ship/count/disabled
 curl -X GET http://127.0.0.1:31623/api/ship/info/:name
 curl -X POST http://127.0.0.1:31623/api/ship/add/:name
 curl -X POST http://127.0.0.1:31623/api/ship/port/:name/:port
