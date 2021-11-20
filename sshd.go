@@ -164,6 +164,8 @@ func setupProxyConnection(node tree.Node, proxyConn net.Conn, id Id) {
 	defer node.IfRecoverCloser(proxyConn.Close)
 	addr := proxyConn.RemoteAddr().String()
 	cid := id.Next(addr)
+	// log.Println("open", cid)
+	// defer log.Println("close", cid)
 	child := node.AddChild(cid)
 	child.AddCloser("proxyConn", proxyConn.Close)
 	child.AddProcess("proxyConn", func() {
