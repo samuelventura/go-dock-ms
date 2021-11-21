@@ -164,8 +164,6 @@ func setupProxyConnection(node tree.Node, proxyConn net.Conn, id Id) {
 	defer node.IfRecoverCloser(proxyConn.Close)
 	addr := proxyConn.RemoteAddr().String()
 	cid := id.Next(addr)
-	// log.Println("open", cid)
-	// defer log.Println("close", cid)
 	child := node.AddChild(cid)
 	child.AddCloser("proxyConn", proxyConn.Close)
 	child.AddProcess("proxyConn", func() {
@@ -215,7 +213,9 @@ func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
 		return
 	}
 	node.AddCloser("sshChan", sshChan.Close)
-	node.AddProcess("DiscardRequests(reqChan)", func() { ssh.DiscardRequests(reqChan) })
+	node.AddProcess("DiscardRequests(reqChan)", func() {
+		ssh.DiscardRequests(reqChan)
+	})
 	node.AddProcess("Copy(sshChan, proxyConn)", func() {
 		_, err := io.Copy(sshChan, proxyConn)
 		if err != nil {
