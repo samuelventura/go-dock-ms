@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samuelventura/go-tools"
 	"github.com/samuelventura/go-tree"
 	"golang.org/x/crypto/ssh"
 )
@@ -16,16 +17,17 @@ import (
 func sshd(node tree.Node) {
 	dao := node.GetValue("dao").(Dao)
 	ships := node.GetValue("ships").(Ships)
+	hostname := node.GetValue("hostname").(string)
 	endpoint := node.GetValue("endpoint").(string)
 	hostkey := node.GetValue("hostkey").(string)
 	maxships := node.GetValue("maxships").(int64)
 	privateBytes, err := ioutil.ReadFile(hostkey)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
@@ -33,7 +35,7 @@ func sshd(node tree.Node) {
 			for _, key := range dao.EnabledKeys() {
 				pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.Key))
 				if err != nil {
-					log.Fatalln("Ignoring invalid key", key.Name)
+					log.Panicln("Ignoring invalid key", key.Name)
 				}
 				pubtxt := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pubkey)))
 				if pubtxt == inkey {
@@ -47,14 +49,14 @@ func sshd(node tree.Node) {
 	node.SetValue("config", config)
 	listen, err := net.Listen("tcp", endpoint)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	node.AddCloser("listen", listen.Close)
 	port := listen.Addr().(*net.TCPAddr).Port
 	log.Println("port ssh", port)
 	node.SetValue("port", port)
 	node.AddProcess("listen", func() {
-		id := NewId("ssh-" + hostname() + "-" + listen.Addr().String())
+		id := NewId("ssh-" + hostname + "-" + listen.Addr().String())
 		for {
 			tcpConn, err := listen.Accept()
 			if err != nil {
@@ -84,7 +86,7 @@ func setupSshConnection(node tree.Node, tcpConn net.Conn, ships Ships, id Id) {
 }
 
 func handleSshConnection(node tree.Node, tcpConn net.Conn, ships Ships) {
-	keepAlive(tcpConn)
+	tools.KeepAlive(tcpConn, 5)
 	dao := node.GetValue("dao").(Dao)
 	export := node.GetValue("export").(string)
 	hostname := node.GetValue("hostname").(string)
@@ -172,7 +174,7 @@ func setupProxyConnection(node tree.Node, proxyConn net.Conn, id Id) {
 }
 
 func handleProxyConnection(node tree.Node, proxyConn net.Conn) {
-	keepAlive(proxyConn)
+	tools.KeepAlive(proxyConn, 5)
 	port := node.GetValue("proxy").(int)
 	sshConn := node.GetValue("ssh").(*ssh.ServerConn)
 	err := proxyConn.SetReadDeadline(time.Now().Add(5 * time.Second))

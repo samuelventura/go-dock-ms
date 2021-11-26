@@ -3,10 +3,10 @@ module github.com/samuelventura/go-dock-ms
 go 1.17
 
 require (
-	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e
 	github.com/gin-gonic/gin v1.7.4
-	github.com/samuelventura/go-state v0.1.1-0.20211112004156-59e1c7c09c44
-	github.com/samuelventura/go-tree v0.1.1-0.20211112004052-bed2a01c611d
+	github.com/samuelventura/go-state v0.1.3
+	github.com/samuelventura/go-tools v0.1.6
+	github.com/samuelventura/go-tree v0.1.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	gorm.io/driver/postgres v1.1.2
 	gorm.io/driver/sqlite v1.1.6
@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/felixge/tcpkeepalive v0.0.0-20160804073959-5bb0b2dea91e // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect

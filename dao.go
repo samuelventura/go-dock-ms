@@ -48,7 +48,7 @@ func dialector(node tree.Node) gorm.Dialector {
 	case "postgres":
 		return postgres.Open(source)
 	}
-	log.Fatalf("unknown driver %s", driver)
+	log.Panicln("unknown driver:", driver)
 	return nil
 }
 
@@ -58,11 +58,11 @@ func NewDao(node tree.Node) Dao {
 	dialector := dialector(node)
 	db, err := gorm.Open(dialector, config)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	err = db.AutoMigrate(&KeyDro{}, &ShipDro{}, &StateDro{}, &LogDro{})
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	return &daoDso{&sync.Mutex{}, db}
 }
@@ -87,7 +87,7 @@ func (dso *daoDso) ClearShips() {
 	dro := &StateDro{}
 	result := dso.db.Delete(dro, "true")
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 }
 
@@ -97,7 +97,7 @@ func (dso *daoDso) CountShips() int64 {
 	count := int64(0)
 	result := dso.db.Model(&ShipDro{}).Count(&count)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	return count
 }
@@ -108,7 +108,7 @@ func (dso *daoDso) CountEnabledShips() int64 {
 	count := int64(0)
 	result := dso.db.Model(&ShipDro{}).Where("enabled = ?", true).Count(&count)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	return count
 }
@@ -119,7 +119,7 @@ func (dso *daoDso) CountDisabledShips() int64 {
 	count := int64(0)
 	result := dso.db.Model(&ShipDro{}).Where("enabled != ?", true).Count(&count)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	return count
 }
@@ -170,7 +170,7 @@ func (dso *daoDso) EnabledKeys() []*KeyDro {
 	dros := []*KeyDro{}
 	result := dso.db.Where("enabled", true).Find(&dros)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	return dros
 }
@@ -181,7 +181,7 @@ func (dso *daoDso) ListKeys() []*KeyDro {
 	dros := []*KeyDro{}
 	result := dso.db.Where("true").Find(&dros)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	return dros
 }
@@ -244,7 +244,7 @@ func (dso *daoDso) ShipStart(sid, ship, key, host, ip string, port int) {
 	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "add", ship, key, host, ip, port)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	dro := &StateDro{}
 	dro.Sid = sid
@@ -255,7 +255,7 @@ func (dso *daoDso) ShipStart(sid, ship, key, host, ip string, port int) {
 	dro.IP = ip
 	result := dso.db.Create(dro)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 }
 
@@ -264,15 +264,15 @@ func (dso *daoDso) ShipStop(sid, ship, key, host, ip string, port int) {
 	defer dso.mutex.Unlock()
 	err := dso.addEvent(sid, "del", ship, key, host, ip, port)
 	if err != nil {
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 	dro := &StateDro{}
 	result := dso.db.Where("sid", sid).Delete(dro)
 	if result.Error != nil {
-		log.Fatal(result.Error)
+		log.Panicln(result.Error)
 	}
 	if result.RowsAffected != 1 {
-		log.Fatal("row not found")
+		log.Panicln("row not found")
 	}
 }
 

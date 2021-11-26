@@ -1,23 +1,20 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
-	"os/signal"
 	"strings"
 
 	"github.com/samuelventura/go-state"
+	"github.com/samuelventura/go-tools"
 	"github.com/samuelventura/go-tree"
 )
 
 func main() {
-	os.Setenv("GOTRACEBACK", "all")
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetOutput(os.Stdout)
+	tools.SetupLog()
 
-	ctrlc := make(chan os.Signal, 1)
-	signal.Notify(ctrlc, os.Interrupt)
+	ctrlc := tools.SetupCtrlc()
+	stdin := tools.SetupStdinAll()
 
 	log.Println("start", os.Getpid())
 	defer log.Println("exit")
@@ -26,9 +23,10 @@ func main() {
 	defer rnode.WaitDisposed()
 	//recover closes as well
 	defer rnode.Recover()
-	rnode.SetValue("hostname", hostname())
-	rnode.SetValue("source", getenv("DOCK_DB_SOURCE", withext("db3")))
-	rnode.SetValue("driver", getenv("DOCK_DB_DRIVER", "sqlite"))
+	rnode.SetValue("hostname", tools.GetHostname())
+	rnode.SetValue("source", tools.GetEnviron("DOCK_DB_SOURCE", tools.WithExtension("db3")))
+	rnode.SetValue("driver", tools.GetEnviron("DOCK_DB_DRIVER", "sqlite"))
+	rnode.SetValue("state", tools.GetEnviron("DOCK_STATE", tools.WithExtension("state")))
 	dao := NewDao(rnode) //close on root
 	rnode.AddCloser("dao", dao.Close)
 	rnode.SetValue("dao", dao)
@@ -38,32 +36,25 @@ func main() {
 	dao.ClearShips()
 	rnode.SetValue("ships", NewShips())
 
-	spath := state.SingletonPath()
-	snode := state.Serve(rnode, spath)
+	snode := state.Serve(rnode, rnode.GetValue("state").(string))
 	defer snode.WaitDisposed()
 	defer snode.Close()
-	log.Println("socket", spath)
 
 	enode := rnode.AddChild("ssh")
 	defer enode.WaitDisposed()
 	defer enode.Close()
-	enode.SetValue("endpoint", getenv("DOCK_ENDPOINT_SSH", "0.0.0.0:31622"))
-	enode.SetValue("hostkey", getenv("DOCK_HOSTKEY", withext("key")))
-	enode.SetValue("maxships", getenvi("DOCK_MAXSHIPS", "1000"))
-	enode.SetValue("export", getenv("DOCK_EXPORT_IP", "127.0.0.1"))
+	enode.SetValue("endpoint", tools.GetEnviron("DOCK_ENDPOINT_SSH", "0.0.0.0:31622"))
+	enode.SetValue("hostkey", tools.GetEnviron("DOCK_HOSTKEY", tools.WithExtension("key")))
+	enode.SetValue("maxships", tools.GetEnvironInt("DOCK_MAXSHIPS", 10, 32, 1000))
+	enode.SetValue("export", tools.GetEnviron("DOCK_EXPORT_IP", "127.0.0.1"))
 	sshd(enode)
 
 	anode := rnode.AddChild("api")
 	defer anode.WaitDisposed()
 	defer anode.Close()
-	anode.SetValue("endpoint", getenv("DOCK_ENDPOINT_API", "127.0.0.1:31623"))
+	anode.SetValue("endpoint", tools.GetEnviron("DOCK_ENDPOINT_API", "127.0.0.1:31623"))
 	api(anode)
 
-	stdin := make(chan interface{})
-	go func() {
-		defer close(stdin)
-		ioutil.ReadAll(os.Stdin)
-	}()
 	select {
 	case <-rnode.Closed():
 	case <-snode.Closed():
