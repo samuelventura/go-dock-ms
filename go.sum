@@ -127,6 +127,8 @@ github.com/samuelventura/go-tools v0.1.6 h1:yuS/XIjueCuyE1G7nZ4yMSrFKoyvjuri05ys
 github.com/samuelventura/go-tools v0.1.6/go.mod h1:pIMgPPXnCqKqZ3Zo2+ztP47P4mz+tDxG0jQkD9WT0Pg=
 github.com/samuelventura/go-tree v0.1.1 h1:CSvVlCiM9FcaHFqv1I+PZ8pHbdZLmjf+5JBN0D/89lo=
 github.com/samuelventura/go-tree v0.1.1/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
+github.com/samuelventura/go-tree v0.1.2 h1:l0lHTIWrZ/uWq5KzzNQdNqryiUpGi5XnrEBHpijx5N0=
+github.com/samuelventura/go-tree v0.1.2/go.mod h1:IRxqXlA+huNY8Dd+AX6v2r050IcwmRYnWr7jgbeg87E=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v1.2.0 h1:abSATXmQEYyShuxI4/vyW3tV1MrKAJzCZ/0zLUXYbsQ=
